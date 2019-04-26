@@ -56,6 +56,7 @@ local encode64     = base64.encode64
 local getenv       = os.getenv
 local hook         = require("Hook")
 local i18n         = require("i18n")
+local Cache        = require("Cache")
 local pack         = (_VERSION == "Lua 5.1") and argsPack or table.pack -- luacheck: compat
 local remove       = table.remove
 local s_adminT     = {}
@@ -730,6 +731,100 @@ local function compareRequestedLoadsWithActual()
    return aa, bb
 end
 
+function Set (list)
+   local set = {}
+   for _, l in ipairs(list) do set[l] = true end
+   return set
+end
+
+local function loadHierarchy(module)
+   -- Get this module's parents
+   local parents = {}
+   if module.parentAA then
+      for i = 1, #module.parentAA do
+         for j = 1, #module.parentAA[i] do
+            parents[module.parentAA[i][j]] = true
+         end
+      end
+   end
+
+   -- Create the set of parents required as an array
+   local setParents = {}
+   for k,v in pairs(parents) do
+      setParents[#setParents+1] = k
+   end
+
+   -- Append the module we're actually trying to load
+   setParents[#setParents+1] = module.fullName
+
+   -- Try to load the parents
+   local result = Load_Try(unpack(setParents))
+
+   -- Check that no parent load returned false
+   local success = true
+   for i = 1, #result do
+      success = success and result[i]
+   end
+
+   -- Check that the last load was successful or not
+   -- Can only have failed if there are two parents that are in the wrong order
+   if not success then
+      -- Reverse the order of the first two parents
+      setParents[1], setParents[2] = setParents[2], setParents[1]
+      -- Force the modules to be loaded this time around
+      Load_Usr(unpack(setParents))
+   end
+end
+
+local function tryLoadHierarchy(modules)
+   for i = 1, #modules do
+      local cache = Cache:singleton{dontWrite = true, quiet = true, buildCache = true,
+                                    buildFresh = false, noMRC=true}
+      local spiderT, dbT, mpathMapT = cache:build()
+
+      local found = {}
+      local similar = {}
+
+      for k,v in pairs(dbT) do
+         for k, v in pairs(v) do
+            if v.fullName == modules[i] then
+               found[#found+1] = v
+            end
+
+            if string_split(v.fullName, '/')[1] == modules[i] then
+               similar[#similar+1] = v.fullName
+            end
+         end
+      end
+
+      -- Check if more than one module was found with the same name
+      if #found > 1 then
+         local error = "Can't load " .. modules[i] .. " because it has more than one parent hierarchy, making this load ambiguous. \n\n"
+         error = error .. "\tPlease load one of the following combinations before loading this module:"
+         for e = 1, #found do
+            for p = 1, #found[e].parentAA do
+               error = error .. "\n\t* " .. concatTbl(found[e].parentAA[p], " ")
+            end
+         end
+         LmodError(error)
+      end
+
+      -- Check that any modules with the provided name were found
+      if #found == 1 then
+         loadHierarchy(found[1])
+      end
+
+      -- Check if no module was found with this name
+      if #found == 0 and #similar then
+         local error = "Couldn't find module with name " .. modules[i] .. ", did you mean to load one of the following?"
+         for k,v in pairs(Set(similar)) do
+            error = error .. "\n\t* " .. k
+         end
+         LmodError(error)
+      end
+   end
+end
+
 function M.mustLoad(self)
    dbg.start{"MasterControl:mustLoad()"}
    local aa, bb = compareRequestedLoadsWithActual()
@@ -791,7 +886,8 @@ function M.mustLoad(self)
       end
 
       if (#kA > 0) then
-         mcp:report{msg="e_Failed_Load_2", kA = concatTbl(kA, ", "), kB = concatTbl(kB, " ")}
+         -- The module exists, but it can not be loaded due to it's parent tree not being loaded
+         tryLoadHierarchy(kB)
       end
    end
    dbg.fini("MasterControl:mustLoad")

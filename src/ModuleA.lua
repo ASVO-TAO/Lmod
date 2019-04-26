@@ -494,7 +494,7 @@ local function l_checkforNV(T)
    return true
 end
 
-local function build_from_spiderT(spiderT)
+function M.build_from_spiderT(spiderT)
    dbg.start{"ModuleA build_from_spiderT(spiderT)"}
    local frameStk = FrameStk:singleton()
    local mt       = frameStk:mt()
@@ -599,7 +599,7 @@ function M.__new(self, mpathA, maxdepthT, moduleRCT, spiderT)
       o.__spiderBuilt        = true
       dbg.print{"calling build_from_spiderT()\n"}
       dbg.printT("spiderT",spiderT)
-      o.__moduleA, o.__isNVV = build_from_spiderT(spiderT)
+      o.__moduleA, o.__isNVV = self:build_from_spiderT(spiderT)
    else
       dbg.print{"calling DirTree:new()\n"}
       dirTree         = DirTree:new(mpathA)

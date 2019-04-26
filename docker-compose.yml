@@ -1,0 +1,7 @@
+version: '3'
+
+services:
+  test:
+    build: ./
+    container_name: lmod_test
+    command: bash -c "./bash_unit tests/lmod_tests_ozstar.sh"

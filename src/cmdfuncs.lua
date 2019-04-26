@@ -374,9 +374,10 @@ end
 function Load_Try(...)
    dbg.start{"Load_Try(",concatTbl({...},", "),")"}
    deactivateWarning()
-   Load_Usr(...)
+   local b = Load_Usr(...)
    activateWarning()
    dbg.fini("Load_Try")
+   return b
 end
 
 ------------------------------------------------------------------------

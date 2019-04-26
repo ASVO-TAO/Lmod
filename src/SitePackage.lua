@@ -105,3 +105,41 @@ require("strict")
 --  function as "module_requires_group".  The key is the name used in the modulefile and
 --  the right is what the function is called in SitePackage.lua.  The names can be the
 --  same.
+
+local hook   = require("Hook")
+
+function startup(UsrCmd)
+    -- Get the system architecture variable if it is set
+    local arch = os.getenv("SYS_ARCH")
+
+    -- Check that the architecture environment variable is set
+    if arch ~= nil then
+
+        -- Construct the module file path for this architecture
+        local mod_path = pathJoin("/apps", arch, "modulefiles", "all", "core")
+
+        -- Check that the architecture is valid
+        if not isDir(mod_path) then
+
+            -- Emit an error explaining that the path is invalid
+            LmodError("Invalid architecture path: " .. mod_path)
+
+        else
+
+            -- Add the architecture module path to the modulepath environment variable
+            -- Lmod will pass this later in it's initialization
+            append_path("MODULEPATH", mod_path)
+
+            -- Now set the easybuild config location for this architecture
+            setenv("EASYBUILD_CONFIGFILES", pathJoin("/apps", arch, "easybuild.cfg"))
+
+        end
+
+    end
+
+    -- Now we add generic last so that the arch specific modules take precedence
+    -- local mod_path = pathJoin("/apps", "generic", "modulefiles", "all", "core")
+    -- append_path("MODULEPATH", mod_path)
+end
+
+hook.register("startup", startup)

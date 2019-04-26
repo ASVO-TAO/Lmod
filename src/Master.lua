@@ -54,6 +54,8 @@ local cosmic       = require("Cosmic"):singleton()
 local dbg          = require("Dbg"):dbg()
 local hook         = require("Hook")
 local i18n         = require("i18n")
+local Spider       = require("Spider")
+local Cache        = require("Cache")
 local remove       = table.remove
 local sort         = table.sort
 local q_load       = 0
@@ -848,6 +850,82 @@ local function regroup_avail_blocks(availStyle, availA)
    return newAvailA
 end
 
+function string_split(s, sep)
+   local sep, fields = sep or ":", {}
+   local pattern = string.format("([^%s]+)", sep)
+   s:gsub(pattern, function(c) fields[#fields+1] = c end)
+   return fields
+end
+
+function TableConcat(t1,t2)
+   for i=1,#t2 do
+      t1[#t1+1] = t2[i]
+   end
+   return t1
+end
+
+function module_path_sort(a, b)
+   if not a then return true end
+   if not b then return false end
+
+   -- First check for core modules which should be at the bottom
+   if a:find("modulefiles/all/core") then return false end
+   if b:find("modulefiles/all/core") then return true end
+
+   -- Get the compiler part if one exists
+   -- /apps/skylake/modulefiles/all/compiler/gcc/6.4.0
+   local _, compilera = a:find("modulefiles/all/compiler/")
+   local _, compilerb = b:find("modulefiles/all/compiler/")
+
+   local compilera_ver
+   local compilerb_ver
+
+   -- Remove the leading path
+   if compilera then
+      local ext = a:sub(compilera+1)
+      compilera = string_split(ext,"/")[1]
+      compilera_ver = string_split(ext,"/")[2]
+   end
+
+   if compilerb then
+      local ext = b:sub(compilerb+1)
+      compilerb = string_split(ext,"/")[1]
+      compilerb_ver = string_split(ext,"/")[2]
+   end
+
+   -- Get the mpi part if one exists
+   -- /apps/skylake/modulefiles/all/mpi/gcc/6.4.0/openmpi/3.0.0
+   local _, mpia = a:find("modulefiles/all/mpi/")
+   local _, mpib = b:find("modulefiles/all/mpi/")
+
+   -- Remove the leading path
+   if mpia then
+      local ext = a:sub(mpia+1)
+      compilera = string_split(ext,"/")[1]
+      compilera_ver = string_split(ext,"/")[2]
+      mpia = string_split(ext, "/")[4]
+   end
+
+   if mpib then
+      local ext = b:sub(mpib+1)
+      compilerb = string_split(ext,"/")[1]
+      compilerb_ver = string_split(ext,"/")[2]
+      mpib = string_split(ext, "/")[4]
+   end
+
+   compilera = compilera or ""
+   compilerb = compilerb or ""
+   compilera_ver = compilera_ver or ""
+   compilerb_ver = compilerb_ver or ""
+   mpia = mpia or "999999"
+   mpib = mpib or "999999"
+
+   if compilera < compilerb then return true
+   elseif compilera > compilerb then return false
+   elseif compilera_ver < compilerb_ver then return true
+   elseif compilera_ver > compilerb_ver then return false
+   else return mpia < mpib end
+end
 
 function M.avail(self, argA)
    dbg.start{"Master:avail(",concatTbl(argA,", "),")"}
@@ -874,8 +952,29 @@ function M.avail(self, argA)
    end
 
    local use_cache   = (not masterTbl.terse) or (cosmic:value("LMOD_CACHED_LOADS") ~= "no")
-   local moduleA     = ModuleA:singleton{spider_cache=use_cache}
    local mrc         = MRC:singleton()
+   local moduleA     = ModuleA:singleton{spider_cache=use_cache}
+
+   -- Check if we need to display all modules (True if only 3 module paths)
+   if #mt:modulePathA() == 3 then
+      local cache = Cache:singleton{dontWrite = true, quiet = true, buildCache = true,
+                                    buildFresh = false, noMRC=true}
+      local spiderT, dbT, mpathMapT = cache:build()
+
+      local mpathT ={}
+      local n=0
+
+      for k,v in pairs(mpathMapT) do
+         n=n+1
+         mpathT[n]=k
+      end
+
+      mpathT = TableConcat(mt:modulePathA(), mpathT)
+      table.sort(mpathT, module_path_sort)
+
+      moduleA = ModuleA:__new(mpathT, mt:maxDepthT(), getModuleRCT(), nil)
+   end
+
    local availA      = moduleA:build_availA()
    local twidth      = TermWidth()
    local cwidth      = masterTbl.rt and LMOD_COLUMN_TABLE_WIDTH or twidth
@@ -969,6 +1068,34 @@ function M.avail(self, argA)
    for k = 1,#availA do
       local A = availA[k].A
       local label = availA[k].mpath
+
+      -- Get the mpi part if one exists
+      -- /apps/skylake/modulefiles/all/mpi/gcc/6.4.0/openmpi/3.0.0
+      local _, mpi = label:find("modulefiles/all/mpi/")
+
+      -- Get the compiler part if one exists
+      -- /apps/skylake/modulefiles/all/compiler/gcc/6.4.0
+      local _, compiler = label:find("modulefiles/all/compiler/")
+
+      if label:find("modulefiles/all/core") then
+         label = "Core Modules"
+      end
+      if compiler then
+         -- Remove the leading path
+         compiler = label:sub(compiler+1)
+
+         -- Split the path in to compiler and version
+         label = "Compiler: " .. string_split(compiler,"/")[1] .. " " .. string_split(compiler,"/")[2]
+      end
+      if mpi then
+         -- Remove the leading path
+         mpi = label:sub(mpi+1)
+         dbg:printT(string_split(mpi,"/"))
+         -- Split the path in to compiler and version
+         label = "Compiler: " .. string_split(mpi,"/")[1] .. " " .. string_split(mpi,"/")[2]
+         label = label .. " OpenMPI: " .. string_split(mpi,"/")[4]
+      end
+
       if (next(A) ~= nil) then
          local b = {}
          for j = 1,#A do
@@ -991,6 +1118,7 @@ function M.avail(self, argA)
                for i = 1,#resultA do
                   c[#c+1] = resultA[i]
                end
+               -- dbg:printT(availA[k])
 
                local propStr = c[3] or ""
                local verMapStr = mrc:getMod2VersionT(fullName)
