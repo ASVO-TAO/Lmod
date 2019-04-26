@@ -6,7 +6,7 @@ WORKDIR /apps/lmod_src
 
 # Install the dependencies
 RUN yum install -y epel-release
-RUN yum install -y lua lua-bitop lua-devel lua-filesystem lua-posix curl gcc tcl make rsync
+RUN yum install -y lua lua-bitop lua-devel lua-filesystem lua-posix curl gcc tcl tcl-devel make rsync
 
 # Install bash_unit unit testing framework
 RUN curl -s https://raw.githubusercontent.com/pgrange/bash_unit/master/install.sh | bash

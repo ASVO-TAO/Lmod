@@ -778,13 +778,7 @@ local function loadHierarchy(module)
    setParents[#setParents+1] = module.fullName
 
    -- Try to load the parents
-   local result = Load_Try(unpack(setParents))
-
-   -- Check that no parent load returned false
-   local success = true
-   for i = 1, #result do
-      success = success and result[i]
-   end
+   local success = Load_Try(unpack(setParents))
 
    -- Check that the last load was successful or not
    -- Can only have failed if there are two parents that are in the wrong order
