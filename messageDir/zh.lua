@@ -8,7 +8,7 @@
 --
 --  ----------------------------------------------------------------------
 --
---  Copyright (C) 2008-2017 Robert McLay
+--  Copyright (C) 2008-2018 Robert McLay
 --
 --  Permission is hereby granted, free of charge, to any person obtaining
 --  a copy of this software and associated documentation files (the
@@ -47,6 +47,7 @@ return {
      ml_help               = nil,
      ml_opt                = nil,
      ml_2many              = nil,
+     ml_misplaced_opt      = nil,
      
      --------------------------------------------------------------------------
      -- LmodError messages
@@ -81,6 +82,7 @@ return {
      e_Swap_Failed         = nil,
      e_Unable_2_Load       = nil,
      e_Unable_2_parse      = "不能解析 \"%{path}\". 已退出！\n",      
+     e_Unable_2_rename     = nil,
      e_Unknown_Coll        = nil,
      e_coll_corrupt        = nil,
      e_dbT_sn_fail         = nil,
@@ -99,6 +101,7 @@ return {
      m_Family_Swap         = "\nLmod 已经自动将 \"%{oldFullName}\" 替换为 \"%{newFullName}\"\n",   
      m_For_System          = nil,
      m_Inactive_Modules    = nil,
+     m_IsNVV               = nil,
      m_Module_Msgs         = nil,
      m_No_Named_Coll       = nil,
      m_No_Search_Cmd       = nil,

@@ -1,4 +1,6 @@
 _G._DEBUG=false
+local posix      = require("posix")
+
 require("strict")
 require("utils")
 require("fileOps")
@@ -11,7 +13,6 @@ local cosmic     = require("Cosmic"):singleton()
 
 local concatTbl  = table.concat
 local getenv     = os.getenv
-local posix      = require("posix")
 local testDir    = "spec/Avail"
 describe("Testing The Avail command #Avail.",
          function()
@@ -101,6 +102,7 @@ describe("Testing The Avail command #Avail.",
                      "\n",
                      "   bio/bowtie/32/1.0    bio/bowtie/64/2.0 (D)\n" ..
                      "   bio/bowtie/32/2.0    bio/genomics",
+                     "\n",
                      "\n",
                   }
                   --print("availA:\n", concatTbl(_a,""))

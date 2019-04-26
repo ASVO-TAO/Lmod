@@ -14,7 +14,7 @@ require("strict")
 --
 --  ----------------------------------------------------------------------
 --
---  Copyright (C) 2008-2017 Robert McLay
+--  Copyright (C) 2008-2018 Robert McLay
 --
 --  Permission is hereby granted, free of charge, to any person obtaining
 --  a copy of this software and associated documentation files (the
@@ -91,6 +91,10 @@ function M.apply(name, ...)
    if (validT[name]) then
       return validT[name](...)
    end
+end
+
+function M.exists(name)
+   return validT[name] and true or false
 end
 
 return M

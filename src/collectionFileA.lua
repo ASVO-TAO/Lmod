@@ -10,7 +10,7 @@ require("strict")
 --
 --  ----------------------------------------------------------------------
 --
---  Copyright (C) 2008-2017 Robert McLay
+--  Copyright (C) 2008-2018 Robert McLay
 --
 --  Permission is hereby granted, free of charge, to any person obtaining
 --  a copy of this software and associated documentation files (the
@@ -38,7 +38,7 @@ require("utils")
 
 local dbg = require("Dbg"):dbg()
 function collectFileA(sn, versionStr, v, fileA)
-   dbg.start{"collectFileA(",sn,",", versionStr,",v,fileA)"}
+   --dbg.start{"collectFileA(",sn,",", versionStr,",v,fileA)"}
    if (v.file and versionStr == nil) then
       fileA[#fileA+1] = { sn = sn, version = nil, fullName = sn, fn=v.file, wV="~", pV="~" }
    end
@@ -46,13 +46,25 @@ function collectFileA(sn, versionStr, v, fileA)
       if (versionStr) then
          local k  = pathJoin(sn, versionStr)
          local vv = v.fileT[k]
-         dbg.print{"k: ",k,", vv: ",vv,"\n"}
+         --dbg.print{"k: ",k,", vv: ",vv,"\n"}
          if (vv) then
             fileA[#fileA+1] = { sn = sn, fullName = build_fullName(sn, versionStr),
                                 version = versionStr, fn = vv.fn, wV = vv.wV, pV = vv.pV }
-            dbg.print{"versionStr:",versionStr,"\n"}
-            dbg.fini("collectFileA")
+            --dbg.print{"versionStr:",versionStr,"\n"}
+            --dbg.fini("collectFileA")
             return
+         end
+         local vp = versionStr
+         if (vp:sub(-1) ~= ".") then
+            vp = vp .. "."
+         end
+         local keyPat = pathJoin(sn,vp:gsub("%.","%%.") .. ".*")
+         dbg.print{"collectFileA: versionStr: ",versionStr,", keyPat: ",keyPat,"\n"}
+         for k,vvv in pairs(v.fileT) do
+            if (k:find(keyPat)) then
+               fileA[#fileA+1] = { sn = sn, fullName = k, version = k:gsub("^" .. sn .. "/",""),
+                                   fn = vvv.fn, wV = vvv.wV, pV = vvv.pV }
+            end
          end
       else
          for fullName, vv in pairs(v.fileT) do
@@ -68,5 +80,5 @@ function collectFileA(sn, versionStr, v, fileA)
          collectFileA(sn, nil, vv, fileA)
       end
    end
-   dbg.fini("collectFileA")
+   --dbg.fini("collectFileA")
 end

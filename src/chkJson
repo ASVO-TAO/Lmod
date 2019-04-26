@@ -13,13 +13,19 @@ package.path   = sys_lua_path
 package.cpath  = sys_lua_cpath
 
 local arg_0    = arg[0]
+_G._DEBUG      = false
 local posix    = require("posix")
 local readlink = posix.readlink
 local stat     = posix.stat
 
 local st       = stat(arg_0)
 while (st.type == "link") do
-   arg_0 = readlink(arg_0)
+   local lnk = readlink(arg_0)
+   if (arg_0:find("/") and (lnk:find("^/") == nil)) then
+      local dir = arg_0:gsub("/[^/]*$","")
+      lnk       = dir .. "/" .. lnk
+   end
+   arg_0 = lnk
    st    = stat(arg_0)
 end
 
@@ -59,6 +65,7 @@ function main()
       syshost      = { rule = "have"},
       uname        = { rule = "have"},
       z01_admin    = { rule = "have"},
+      prefix_site  = { rule = "have"},
       allowTCL     = { rule = "match", value = "yes"},
       autoSwap     = { rule = "match", value = "yes"},
       case         = { rule = "match", value = "no"},
@@ -75,7 +82,6 @@ function main()
       ld_preload   = { rule = "match", value = "<empty>"},
       lua_cpath    = { rule = "match", value = "@sys_lua_cpath@"},
       lua_path     = { rule = "match", value = "@sys_lua_path@"},
-      lua_json     = { rule = "match", value = "no"},
       lua_term     = { rule = "match", value = "no"},
       mpath_av     = { rule = "match", value = "no"},
       mpath_root   = { rule = "match", value = ""},

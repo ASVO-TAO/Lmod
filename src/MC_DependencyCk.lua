@@ -16,7 +16,7 @@ require("strict")
 --
 --  ----------------------------------------------------------------------
 --
---  Copyright (C) 2008-2017 Robert McLay
+--  Copyright (C) 2008-2018 Robert McLay
 --
 --  Permission is hereby granted, free of charge, to any person obtaining
 --  a copy of this software and associated documentation files (the
@@ -59,6 +59,9 @@ M.help                 = MasterControl.quiet
 M.inherit              = MasterControl.quiet
 M.load                 = MasterControl.quiet
 M.load_usr             = MasterControl.quiet
+M.message              = MasterControl.quiet
+M.msg_raw              = MasterControl.quiet
+M.mgrload              = MasterControl.quiet
 M.myFileName           = MasterControl.myFileName
 M.myModuleFullName     = MasterControl.myModuleFullName
 M.myModuleUsrName      = MasterControl.myModuleUsrName

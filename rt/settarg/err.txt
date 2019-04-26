@@ -2,7 +2,7 @@
 step 1
 lua ProjectDIR/src/lmod.in.lua bash --regression_testing --version
 ===========================
-Modules based on Lua: Version 7.7.5  2017-09-29 13:56 -05:00
+Modules based on Lua: Version 7.8.1  2018-08-08 19:41 -05:00
     by Robert McLay mclay@tacc.utexas.edu
 ===========================
 step 2
@@ -103,6 +103,9 @@ set_shell_function("mdbg","settarg "$@" mdbg","settarg $* mdbg")
 execute{cmd="eval `lua ProjectDIR/settarg/settarg_cmd.in.lua -s bash --destroy`", modeA={"unload"}}
 set_shell_function("precmd","{
              local tilde="~";
+             local H=${HOSTNAME-$(hostname)};
+             H=${H%%.*};
+             local SHOST=${SHOST-$H};
              eval $(${LMOD_SETTARG_CMD:-:} -s bash);
              ${SET_TITLE_BAR:-:} "${TARG_TITLE_BAR_PAREN}${USER}@${SHOST}:${PWD/#$HOME/$tilde}";
              ${USER_PROMPT_CMD:-:};

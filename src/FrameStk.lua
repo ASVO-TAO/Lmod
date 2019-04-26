@@ -10,7 +10,7 @@ require("strict")
 --
 --  ----------------------------------------------------------------------
 --
---  Copyright (C) 2008-2017 Robert McLay
+--  Copyright (C) 2008-2018 Robert McLay
 --
 --  Permission is hereby granted, free of charge, to any person obtaining
 --  a copy of this software and associated documentation files (the
@@ -74,6 +74,15 @@ end
 function M.__clear(self)
    s_frameStk = false
 end
+
+function M.resetMPATH2system(self)
+   local varT       = self:varT()
+   local mt         = self:mt()
+   local nodups     = true
+   local mpath      = mt:resetMPATH2system()
+   varT[ModulePath] = Var:new(ModulePath, mpath, nodups, ":")
+end
+
 
 function M.push(self, mname)
    --dbg.start{"FrameStk:push(mname)"}

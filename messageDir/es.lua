@@ -8,7 +8,7 @@
 --
 --  ----------------------------------------------------------------------
 --
---  Copyright (C) 2008-2017 Robert McLay
+--  Copyright (C) 2008-2018 Robert McLay
 --
 --  Permission is hereby granted, free of charge, to any person obtaining
 --  a copy of this software and associated documentation files (the
@@ -47,6 +47,7 @@ return {
      ml_help               = nil,
      ml_opt                = nil,
      ml_2many              = nil,
+     ml_misplaced_opt      = nil,
      
 
      --------------------------------------------------------------------------
@@ -108,6 +109,7 @@ Además, puede configurar la variable de entorno LMOD_DISABLE_SAME_NAME_AUTOSWAP
      w_SYS_DFLT_EMPTY      = nil,
      e_Unable_2_Load       = "Imposible cargar el módulo: %{name}\n     %{fn}: %{message}\n",
      e_Unable_2_parse      = "Imposible analizar: \"%{path}\". ¡Abortar!\n",
+     e_Unable_2_rename     = nil,
      e_Unknown_Coll        = "La colección: \"%{collection}\" no existe.\n  Intente \"module savelist\" para ver posibles opciones.\n",
      e_coll_corrupt        = nil,
      e_dbT_sn_fail         = "dbT[sn] falló por sn: %{sn}\n",
@@ -126,6 +128,7 @@ Además, puede configurar la variable de entorno LMOD_DISABLE_SAME_NAME_AUTOSWAP
      m_Family_Swap         = "\nLmod va a reemplazar \"%{oldFullName}\" con \"%{newFullName}\" automáticamente\n",
      m_For_System          = nil,
      m_Inactive_Modules    = nil,
+     m_IsNVV               = nil,
      m_Module_Msgs         = nil,
      m_No_Named_Coll       = nil,
      m_No_Search_Cmd       = nil,

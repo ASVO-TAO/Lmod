@@ -66,9 +66,22 @@ configuration step.
    [yes/no] If set to yes then Lmod will trace the loads/unloads while
    the module command is running.
 
+**LMOD_MODULERCFILE**:
+   A single file or a colon separated list of files to be used to
+   specify the system MODULERC file.  **MODULERCFILE** can also be
+   used but only **LMOD_MODULERCFILE** is used if both are specified.
+   See :ref:`modulerc-label` for more details.
 
-Configuration time setting that can be overridden by env. vars.
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**MODULERCFILE**:
+   A single file or a colon separated list of files to be used to
+   specify the system MODULERC file.  **LMOD_MODULERCFILE** can also be
+   used but only **LMOD_MODULERCFILE** is used if both are specified.
+   See :ref:`modulerc-label` for more details.
+   
+
+
+Configuration time settings that can be overridden by env. vars.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The following settings are defined by configure but can be overridden
 by environment variables.  The brackets show the following values
@@ -80,7 +93,8 @@ the configuration option which will set the action.
 **LMOD_ALLOW_TCL_MFILES**:
   [yes/no, default: yes, --with-tcl].  Allow tcl modulefiles.  Note
   that .version and .modulerc files still use the tcl interpreter. So
-  setting this to no.
+  setting this to no means that your site will have to use either the
+  "default" symlink or ".modulerc.lua" to specify defaults.
 
 **LMOD_ANCIENT**:
   [number, default:86400, --with-ancient].  The number of seconds that
@@ -150,7 +164,7 @@ the configuration option which will set the action.
   will not work with csh or tcsh as there is a problem with these
   shells and not Lmod.
 
-**LMOD_SHORTTIME**:
+**LMOD_SHORT_TIME**:
   [number, default: 2, --with-shortTime].  If the time to build the
   spider cache takes longer than this number then write the spider
   cache out into the user's account.  If you want to prevent the
@@ -189,3 +203,11 @@ the configuration option which will set the action.
 **LMOD_USE_DOT_FILES**:
   [yes/no, default: yes, --with-useDotFiles] If yes then use
   ~/.lmod.d/.cache, if no then use ~/.lmod.d/__cache__
+
+Configuration only settings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+--**with-silentShellDebug**:
+  [yes/no, default: no] If yes then the module command will silence its output under shell debug.
+
+

@@ -8,7 +8,7 @@
 --
 --  ----------------------------------------------------------------------
 --
---  Copyright (C) 2008-2017 Robert McLay
+--  Copyright (C) 2008-2018 Robert McLay
 --
 --  Permission is hereby granted, free of charge, to any person obtaining
 --  a copy of this software and associated documentation files (the
@@ -63,8 +63,11 @@ return {
 
    Any module command can be given after ml:
 
-   if name is avail, save, restore, show, swap,...
+   if name is a subcommand like avail, save, restore, show, swap,...
        $ ml name  arg1 arg2 ...
+
+   All options must go before the subcommand:
+       $ ml --terse avail
 
    Then this is the same :
        $ module name arg1 arg2 ...
@@ -76,6 +79,10 @@ return {
 ]==],
      ml_2many              = "ml error: too many commands\n",
      
+     ml_misplaced_opt      = [==[ml error: misplaced option: "%{opt}"
+  Try ml --help for usage.
+]==],
+
      --------------------------------------------------------------------------
      -- LmodError messages
      --------------------------------------------------------------------------
@@ -138,8 +145,9 @@ Alternatively, you can set the environment variable LMOD_DISABLE_SAME_NAME_AUTOS
      e_Prereq_Any          = "Cannot load module \"%{name}\". At least one of these module(s) must be loaded:\n   %{module_list}\n",
      e_Spdr_Timeout        = "Spider search timed out.\n",
      e_Swap_Failed         = "Swap failed: \"%{name}\" is not loaded.\n",
-     e_Unable_2_Load       = "Unable to load module: %{name}\n     %{fn}: %{message}\n",
+     e_Unable_2_Load       = "Unable to load module because of error when evaluating modulefile: %{name}\n     %{fn}: %{message}\n     Please check the modulefile and especially if there is a the line number specified in the above message",
      e_Unable_2_parse      = "Unable to parse: \"%{path}\". Aborting!\n",
+     e_Unable_2_rename     = "Unable to rename %{from} to %{to}, error message: %{errMsg}",
      e_Unknown_Coll        = "User module collection: \"%{collection}\" does not exist.\n  Try \"module savelist\" for possible choices.\n",
      e_coll_corrupt        = "The module collection file is corrupt. Please remove: %{fn}\n",
      e_dbT_sn_fail         = "dbT[sn] failed for sn: %{sn}\n",
@@ -158,6 +166,10 @@ Alternatively, you can set the environment variable LMOD_DISABLE_SAME_NAME_AUTOS
      m_Family_Swap         = "\nLmod is automatically replacing \"%{oldFullName}\" with \"%{newFullName}\".\n",
      m_For_System          = ", for system: \"%{sname}\"",
      m_Inactive_Modules    = "\nInactive Modules:\n",
+     m_IsNVV               = [==[
+Module defaults are chosen based on Find First Rules due to Name/Version/Version modules found in the module tree.
+See https://lmod.readthedocs.io/en/latest/060_locating.html for details.
+]==],
      m_Module_Msgs         = [==[
 %{border}
 There are messages associated with the following module(s):
@@ -186,7 +198,7 @@ To search the contents of modules for matching words execute:
      m_Reload_Modules      = "\nDue to MODULEPATH changes, the following have been reloaded:\n",
      m_Reload_Version_Chng = "\nThe following have been reloaded with a version change:\n",
      m_Restore_Coll        = "Restoring modules from %{msg}\n",
-     m_Reset_SysDflt       = "Resetting modules to system default\n",
+     m_Reset_SysDflt       = "Resetting modules to system default. Reseting $MODULEPATH back to system default. All extra directories will be removed from $MODULEPATH.\n",
      m_Save_Coll           = "Saved current collection of modules to: \"%{a}\"%{msgTail}\n",
      m_Spdr_L1             = [==[%{border}  For detailed information about a specific "%{key}" module (including how to load the modules) use the module's full name.
   For example:
@@ -221,7 +233,7 @@ must specify the version if there is more than one version:
      w_Broken_Coll         = [==[One or more modules in your %{collectionName} collection have changed: "%{module_list}".
 To see the contents of this collection execute:
   $ module describe %{collectionName}
-To rebuild the collection, load the modules you wish, then execute:
+To rebuild the collection, do a module reset, then load the modules you wish, then execute:
   $ module save %{collectionName}
 If you no longer want this module collection execute:
   $ rm ~/.lmod.d/%{collectionName}
@@ -326,6 +338,8 @@ The system default contains no modules
      misc2                 = "Prepend or Append path to MODULEPATH.",
      misc3                 = "remove path from MODULEPATH.",
      misc4                 = "output list of active modules as a lua table.",
+     misc_isLoaded         = "return a true status if module is loaded",
+     misc_isAvail          = "return a true status if module can be loaded",
 
 
      env_title             = "Important Environment Variables:\n" ..

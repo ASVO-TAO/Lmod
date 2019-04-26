@@ -8,7 +8,7 @@
 --
 --  ----------------------------------------------------------------------
 --
---  Copyright (C) 2008-2017 Robert McLay
+--  Copyright (C) 2008-2018 Robert McLay
 --
 --  Permission is hereby granted, free of charge, to any person obtaining
 --  a copy of this software and associated documentation files (the
@@ -36,6 +36,8 @@
 -- Csh: This is a derived class from BaseShell.  This classes knows how
 --      to expand the environment variable into Csh syntax.
 
+_G._DEBUG          = false
+local posix        = require("posix")
 
 require("strict")
 require("pairsByKeys")
@@ -44,7 +46,6 @@ local BaseShell    = require("BaseShell")
 local Csh          = inheritsFrom(BaseShell)
 local dbg          = require("Dbg"):dbg()
 local concatTbl    = table.concat
-local posix        = require("posix")
 local setenv_posix = posix.setenv
 local stdout       = io.stdout
 Csh.my_name        = 'csh'
@@ -86,9 +87,8 @@ function Csh.expandVar(self, k, v, vType)
    end
    local lineA       = {}
    local middle      = ' '
-   v                 = tostring(v)
-   v                 = v:gsub("!","\\!")
-   v                 = v:multiEscaped()
+   v                 = tostring(v):gsub("!","\\!")
+   v                 = v:cshEscaped()
    if (vType == "local_var") then
       lineA[#lineA + 1] = "set "
       middle            = "="

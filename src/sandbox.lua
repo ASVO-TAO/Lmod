@@ -9,6 +9,9 @@
 --
 -- @module sandbox
 
+_G._DEBUG   = false               -- Required by the new lua posix
+local posix = require("posix")
+
 require("strict")
 
 --------------------------------------------------------------------------
@@ -21,7 +24,7 @@ require("strict")
 --
 --  ----------------------------------------------------------------------
 --
---  Copyright (C) 2008-2017 Robert McLay
+--  Copyright (C) 2008-2018 Robert McLay
 --
 --  Permission is hereby granted, free of charge, to any person obtaining
 --  a copy of this software and associated documentation files (the
@@ -50,8 +53,6 @@ require("capture")
 require("modfuncs")
 require("string_utils")
 require("utils")
-_G._DEBUG   = false               -- Required by the new lua posix
-local posix = require("posix")
 local lfs   = require("lfs")
 
 sandbox_run = false
@@ -59,7 +60,8 @@ sandbox_run = false
 
 --------------------------------------------------------------------------
 -- Table containing valid functions for modulefiles.
-sandbox_env = {
+local sandbox_env = {
+  assert   = assert,
   loadfile = loadfile,
   require  = require,
   ipairs   = ipairs,
@@ -81,7 +83,8 @@ sandbox_env = {
   os       = { clock = os.clock, difftime = os.difftime, time = os.time, date = os.date,
                getenv = os.getenv, execute = os.execute},
 
-  io       = { stderr = io.stderr, open = io.open, close = io.close, write = io.write },
+  io       = { stderr = io.stderr, open = io.open, close = io.close, write = io.write,
+               stdout = io.stdout},
 
   package  = { cpath = package.cpath, loaded = package.loaded, loaders = package.loaders,
                loadlib = package.loadlib, path = package.path, preload = package.preload,
@@ -96,6 +99,7 @@ sandbox_env = {
   load                 = load_module,
   try_load             = try_load,
   try_add              = try_load,
+  mgrload              = mgrload,
   unload               = unload,
   always_load          = always_load,
   depends_on           = depends_on,
@@ -141,24 +145,26 @@ sandbox_env = {
   help                 = help,
 
   -- Misc --
-  convertToCanonical   = convertToCanonical,
-  LmodVersion          = LmodVersion,
+  LmodMsgRaw           = LmodMsgRaw,
   LmodError            = LmodError,
-  LmodWarning          = LmodWarning,
   LmodMessage          = LmodMessage,
-  mode                 = mode,
-  isloaded             = isloaded,
+  LmodVersion          = LmodVersion,
+  LmodWarning          = LmodWarning,
+  convertToCanonical   = convertToCanonical,
+  hierarchyA           = hierarchyA,
   isPending            = isPending,
+  isloaded             = isloaded,
+  loaded_modules       = loaded_modules,
+  mode                 = mode,
+  moduleStackTraceBack = moduleStackTraceBack,
   myFileName           = myFileName,
   myModuleFullName     = myModuleFullName,
-  myModuleUsrName      = myModuleUsrName,
   myModuleName         = myModuleName,
+  myModuleUsrName      = myModuleUsrName,
   myModuleVersion      = myModuleVersion,
   myShellName          = myShellName,
   myShellType          = myShellType,
-  hierarchyA           = hierarchyA,
   userInGroup          = userInGroup,
-  moduleStackTraceBack = moduleStackTraceBack,
 
 
   -- Normal modulefiles should not use these function(s):

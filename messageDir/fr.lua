@@ -8,7 +8,7 @@
 --
 --  ----------------------------------------------------------------------
 --
---  Copyright (C) 2008-2017 Robert McLay
+--  Copyright (C) 2008-2018 Robert McLay
 --
 --  Permission is hereby granted, free of charge, to any person obtaining
 --  a copy of this software and associated documentation files (the
@@ -75,6 +75,7 @@ return {
   Essayez ml --help pour les instructions d'utilisation.
 ]==],
      ml_2many  = "erreur ml : trop de commandes\n",
+     ml_misplaced_opt      = nil,
 
      --------------------------------------------------------------------------
      -- LmodError messages
@@ -137,6 +138,7 @@ Sinon, vous pouvez définir la variable d'environnement LMOD_DISABLE_SAME_NAME_A
      e_Swap_Failed       = "L'échange a échoué : \"%{name}\" n'est pas chargé.\n",
      e_Unable_2_Load     = "Impossible de charger le module : %{name}\n     %{fn}: %{message}\n",
      e_Unable_2_parse    = "Impossible d'analyser : \"%{path}\". Abandon.\n",
+     e_Unable_2_rename   = nil,
      e_Unknown_Coll      = "Collection de modules utilisateur : \"%{collection}\" n'existe pas.\n  Essayez \"module savelist\" pour une liste de choix possibles.\n",
      e_coll_corrupt      = "La collection de modules est corrompue. Veuillez supprimer : %{fn}\n",
      e_dbT_sn_fail       = "dbT[sn] a échoué pour sn: %{sn}\n",
@@ -155,6 +157,7 @@ Sinon, vous pouvez définir la variable d'environnement LMOD_DISABLE_SAME_NAME_A
      m_Family_Swap         = "\nLmod a automatiquement remplacé \"%{oldFullName}\" par \"%{newFullName}\"\n",
      m_For_System          = ", pour le système: \"%{sname}\"",
      m_Inactive_Modules    = "\nModules inactifs:\n",
+     m_IsNVV               = nil,
      m_Module_Msgs         = [==[
 %{border}
 Il y a des messages associés avec le(s) module(s) suivant(s) : 

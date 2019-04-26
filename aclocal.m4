@@ -17,6 +17,10 @@ if test "$HAVE_LUAFILESYSTEM" = yes; then
   LFS_STATUS="system"
 fi
 
+MY_PACKAGE=$prefix/lmod/$LmodV
+if test "$SITE_CONTROLLED_PREFIX" != no ; then
+  MY_PACKAGE=$prefix
+fi
 
 echo
 echo '----------------------------------- SUMMARY ----------------------------------'
@@ -27,8 +31,9 @@ echo
 echo "LUA_INCLUDE................................................." : $LUA_INCLUDE
 echo "Lua executable.............................................." : $luaprog
 echo "Luac executable............................................." : $PATH_TO_LUAC
+echo "User Controlled Prefix......................................" : $SITE_CONTROLLED_PREFIX
 echo "Prefix......................................................" : $prefix
-echo "Actual Install dir.........................................." : $prefix/lmod/$LmodV
+echo "Actual Install dir.........................................." : $MY_PACKAGE
 echo 
 echo "MODULEPATH_ROOT............................................." : $MODULEPATH_ROOT
 echo "Wait (s) before rebuilding cache............................" : $ANCIENT
@@ -44,7 +49,7 @@ echo "ZSH Tab Completion Functions Site Directory................." : $ZSH_SITE_
 echo "Use Dot files in ~/.lmod.d.................................." : $USE_DOT_FILES
 echo "Full Settarg support........................................" : $SETTARG
 echo "Have lua-term..............................................." : $HAVE_LUA_TERM
-echo "Have lua-json..............................................." : $HAVE_LUA_JSON
+echo "Have luafilesystem.........................................." : $HAVE_LUAFILESYSTEM
 echo "Support Auto Swap when using families......................." : $AUTO_SWAP
 echo "Export the module shell function in Bash...................." : $EXPORT_MODULE
 echo "Disable same name autoswapping.............................." : $DISABLE_NAME_AUTOSWAP
@@ -62,7 +67,9 @@ echo 'Use italic instead of faint for hidden modules..............' : $HIDDEN_IT
 echo "If path entry is already there then don't prepend..........." : $TMOD_PATH_RULE
 echo "Use Tmod Find First rule instead of Find Best for defaults.." : $TMOD_FIND_FIRST
 echo "MODULEPATH Initial file....................................." : $MODULEPATH_INIT
-
+echo "Use built-in lua packages instead of system provided pkgs..." : $USE_BUILT_IN_PKGS
+echo "Silence shell debugging output for bash/zsh................." : $SILENCE_SHELL_DEBUGGING
+echo "Use the fast TCL interpreter................................" : $FAST_TCL_INTERP
 
 echo
 echo '------------------------------------------------------------------------------'
@@ -77,8 +84,8 @@ echo If your site already uses BASH_ENV to point to a site specific script, plea
 echo consider sourcing Lmod\'s init/bash from your site\'s file.
 echo
 echo BASH_ENV is defined both in:
-echo "   $prefix/lmod/$LmodV/init/profile"
-echo "   $prefix/lmod/$LmodV/init/cshrc"
+echo "   $MY_PACKAGE/init/profile"
+echo "   $MY_PACKAGE/init/cshrc"
 echo
 echo '******************************************************************************'
 echo
@@ -112,6 +119,17 @@ if test "$a" != no; then
   echo '******************************************************************************'
   echo
 fi
+
+if test $SITE_CONTROLLED_PREFIX != no ; then
+   echo
+   echo '**********************************************************************'
+   echo ' '
+   echo 'Warning: you have chosen to control the prefix.  This means that '
+   echo '         you must update any Lmod scripts in /etc/profile.d'
+   echo ' '
+   echo '**********************************************************************'
+fi
+
 
 echo
 echo Configure complete, Now do:

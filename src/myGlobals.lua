@@ -2,6 +2,9 @@
 -- Fixme
 -- @module myGlobals
 
+_G._DEBUG          = false               -- Required by the new lua posix
+local posix        = require("posix")
+
 require("strict")
 
 --------------------------------------------------------------------------
@@ -14,7 +17,7 @@ require("strict")
 --
 --  ----------------------------------------------------------------------
 --
---  Copyright (C) 2008-2017 Robert McLay
+--  Copyright (C) 2008-2018 Robert McLay
 --
 --  Permission is hereby granted, free of charge, to any person obtaining
 --  a copy of this software and associated documentation files (the
@@ -41,10 +44,8 @@ require("strict")
 require("declare")
 require("fileOps")
 
-_G._DEBUG          = false               -- Required by the new lua posix
 local cosmic       = require("Cosmic"):singleton()
 local lfs          = require("lfs")
-local posix        = require("posix")
 local getenv       = os.getenv
 local setenv_posix = posix.setenv
 
@@ -70,8 +71,6 @@ ExitHookA = require("HookArray")
 ------------------------------------------------------------------------
 setenv_posix("LC_ALL","C",true)
 
-
-
 ------------------------------------------------------------------------
 -- MODULEPATH_INIT: Name of the file that can be used to initialize
 --                  MODULEPATH in the startup scripts
@@ -82,6 +81,13 @@ cosmic:init{name    = "LMOD_MODULEPATH_INIT",
             no_env  = true,
             default = "@PKG@/init/.modulespath"}
 
+------------------------------------------------------------------------
+-- SITE_CONTROLLED_PREFIX: If a site configured lmod with direct prefix
+------------------------------------------------------------------------
+cosmic:init{name    = "SITE_CONTROLLED_PREFIX",
+            sedV    = "@site_controlled_prefix@",
+            no_env  = true,
+            default = "no"}
 
 ------------------------------------------------------------------------
 -- ModulePath: The name of the environment variable which contains the
@@ -131,6 +137,13 @@ cosmic:init{name = "LMOD_CASE_INDEPENDENT_SORTING",
 ------------------------------------------------------------------------
 cosmic:init{name = "LMOD_REDIRECT",
             sedV = "@redirect@",
+            yn   = "no"}
+
+------------------------------------------------------------------------
+-- LMOD_FAST_TCL_INTERP:  Send messages to stdout instead of stderr
+------------------------------------------------------------------------
+cosmic:init{name = "LMOD_FAST_TCL_INTERP",
+            sedV = "@fast_tcl_interp@",
             yn   = "no"}
 
 ------------------------------------------------------------------------
@@ -279,7 +292,10 @@ cosmic:init{name    = "LMOD_PAGER_OPTS",
 -- LMOD_MODULERCFILE: The system RC file to specify aliases, defaults
 --                    and hidden modules.
 ------------------------------------------------------------------------
-local rc_dflt   = pathJoin(cmdDir(),"../../etc/rc")
+local rc_dflt   = pathJoin(cmdDir(),"../../etc/rc.lua")
+if (not isFile(rc_dflt)) then
+   rc_dflt   = pathJoin(cmdDir(),"../../etc/rc")
+end
 local rc        = getenv("LMOD_MODULERCFILE") or getenv("MODULERCFILE") or rc_dflt
 cosmic:init{name    = "LMOD_MODULERCFILE",
             default = rc_dflt,
@@ -307,7 +323,7 @@ cosmic:init{name    = "LMOD_ADMIN_FILE",
 --                   names.  Note that the default choice is marked by
 --                   angle brackets:  A:B:<C> ==> C is the default.
 --                   If no angle brackets are specified then the first
---                   entry is the default (i.e. A:B:C => A is default.
+--                   entry is the default (i.e. A:B:C => A is default).
 ------------------------------------------------------------------------
 
 LMOD_AVAIL_STYLE = getenv("LMOD_AVAIL_STYLE") or "<system>"
@@ -319,11 +335,16 @@ end
 -- LFS_VERSION: The version of luafilesystem being used
 ------------------------------------------------------------------------
 
-
-
 cosmic:init{name    = "LFS_VERSION",
             default = "1.6.3",            
             assignV = lfs._VERSION:gsub("LuaFileSystem  *","")}
+
+------------------------------------------------------------------------
+--  ModA:  A global array used to collect from .modulerc etc files
+------------------------------------------------------------------------
+--
+--ModA           = false
+--
 
 ------------------------------------------------------------------------
 -- MCP, mcp:  Master Control Program objects.  These objects implement
@@ -505,17 +526,6 @@ cosmic:init{name = "LMOD_USE_DOT_FILES",
 
 local use_dot_files = cosmic:value("LMOD_USE_DOT_FILES")
 
-
-
-
-
-------------------------------------------------------------------------
--- LMOD_HAVE_LUA_JSON
-------------------------------------------------------------------------
-cosmic:init{name = "LMOD_HAVE_LUA_JSON",
-            sedV = "@have_lua_json@",
-            yn   = "no"}
-
 ------------------------------------------------------------------------
 -- LMOD_HAVE_LUA_TERM
 ------------------------------------------------------------------------
@@ -593,6 +603,11 @@ GIT_VERSION = "@git_version@"
 epoch      = false
 epoch_type = false
 
+------------------------------------------------------------------------
+-- runTCLprog: a program to process TCL programs
+------------------------------------------------------------------------
+runTCLprog = false
+
 --------------------------------------------------------------------------
 -- Accept functions: Allow or ignore TCL mfiles
 --------------------------------------------------------------------------
@@ -630,6 +645,8 @@ Shell          = false
 
 master         = false
 
+TraceCounter   = 0
+ReloadAllCntr  = 0
 
 
 PkgBase = false

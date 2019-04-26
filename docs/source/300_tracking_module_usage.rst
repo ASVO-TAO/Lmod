@@ -100,7 +100,7 @@ You should check to see that Lmod finds your SitePackage.lua.  If you do::
 
 and it reports::
 
-   Modules based on Lua: Version 6.1  2016-02-05 16:31
+   Modules based on Lua: Version X.Y ...
        by Robert McLay mclay@tacc.utexas.edu
 
    Description                      Value
@@ -119,7 +119,7 @@ Have "master" send the tracking messages to a separate computer.
 
 You can add the following to master's /etc/rsyslog.conf file::
 
-   if $programname contains ‘ModuleUsageTracking’ then @module_usage_tracking
+   if $programname contains 'ModuleUsageTracking' then @module_usage_tracking
    &~
 
 Where you change "module_usage_tracking" into a real machine name.
@@ -199,7 +199,8 @@ a) Install MySQL db. Create a mysql root password.  Then create an account in th
    You will want to change 'test623' to some other password.  You'll also probably want to allow access
    to this database from outside machines as well.
 
-b) Use the "conf_create" program to create a file containing the access information for the db::
+b) Use the "conf_create" program from the contrib/tracking_module_usage
+   directory to create a file containing the access information for the db:: 
 
        $ ./conf_create
        Database host:
@@ -223,18 +224,21 @@ d) Create the database by running the createDB.py program.::
 Step 6
 ------
 
-a) If you have more than one cluster and you want to store them in the same database
-   you might want to modify the store_module_data program.  It assumes that host names
-   are of the form: node_name.cluster_name.something.something and the current
-   store_module_data program picks off the second field in the hostname.  If your site
-   names things differently you should modify that routine to match your needs.
+a) If you have more than one cluster and you want to store them in the
+   same database you might want to modify the store_module_data
+   program found in the contrib/tracking_module_usage directory.  It
+   assumes that host names are of the form:
+   node_name.cluster_name.something.something and the current
+   store_module_data program picks off the second field in the
+   hostname.  If your site names things differently you should modify
+   that routine to match your needs.
 
 
 b) I use a cron job to load the moduleUsage.log-* files.   This is the script I use::
 
        #!/bin/bash
 
-       PATH=<path_to_python>:$PATH
+       PATH=<path_to_python3>:$PATH
        cd ~mclay/load_module_usage
 
        for i in /var/log/moduleUsage.log-*; do
@@ -244,7 +248,11 @@ b) I use a cron job to load the moduleUsage.log-* files.   This is the script I 
          fi
        done
 
-Where <path_to_python> has a python that can also import MySQLdb python module.
+Where <path_to_python3> has a python3 that can also import MySQLdb python module.
+If it is not already installed, you can do::
+
+    $ pip3 install mysqlclient
+  
 Also you'll probably want to change ~mclay/load_module_usage to where ever you have
 the store_module_data program and lmod_db.conf files.  
 
@@ -256,7 +264,8 @@ Step 7
 ------
 
 Once data is being written to the database you can now start analyzing the data.  You can use SQL commands directly
-into the MySQL data base or you can use the supplied script:  analyseLmodDB::
+into the MySQL data base or you can use the supplied script found in
+the contrib/tracking_module_usage directory:  analyseLmodDB::
 
 	% ./analyzeLmodDB --help
 	usage: analyzeLmodDB [-h] [--dbname DBNAME] [--syshost SYSHOST]

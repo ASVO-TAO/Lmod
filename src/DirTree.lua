@@ -1,3 +1,6 @@
+_G._DEBUG       = false
+local posix     = require("posix")
+
 require("strict")
 
 --------------------------------------------------------------------------
@@ -10,7 +13,7 @@ require("strict")
 --
 --  ----------------------------------------------------------------------
 --
---  Copyright (C) 2008-2017 Robert McLay
+--  Copyright (C) 2008-2018 Robert McLay
 --
 --  Permission is hereby granted, free of charge, to any person obtaining
 --  a copy of this software and associated documentation files (the
@@ -36,13 +39,11 @@ require("strict")
 
 require("declare")
 require("utils")
-_G._DEBUG       = false
 local M         = {}
 local MRC       = require("MRC")
 local dbg       = require("Dbg"):dbg()
 local lfs       = require("lfs")
 local open      = io.open
-local posix     = require("posix")
 
 local access    = posix.access
 local concatTbl = table.concat
@@ -66,6 +67,13 @@ local ignoreT = {
    ['.DS_Store']  = true,
 }
 
+local defaultFnT = {
+   default           = 1,
+   ['.modulerc.lua'] = 2,
+   ['.modulerc']     = 3,
+   ['.version']      = 4,
+}
+
 local function keepFile(fn)
    local firstChar = fn:sub(1,1)
    local lastChar  = fn:sub(-1,-1)
@@ -81,14 +89,12 @@ local function keepFile(fn)
       return false
    end
 
+   if (defaultFnT[fn]) then
+      return true
+   end
+
    return true
 end
-
-local defaultFnT = {
-   default       = 1,
-   ['.modulerc'] = 2,
-   ['.version']  = 3,
-}
 
 local function checkValidModulefileReal(fn)
    local f = open(fn,"r")
@@ -141,30 +147,20 @@ local function versionFile(mrc, defaultT)
       return defaultT
    end
 
-   if (not checkValidModulefile(path)) then
+   local luaExt = path:find("%.lua$")
+
+   if (not luaExt and not checkValidModulefile(path)) then
       return defaultT
    end
 
-   local version = false
-   local whole
-   local ok
-   local func
-   local optStr  = ""
-   whole, ok = runTCLprog("RC2lua.tcl", optStr, path)
-   if (not ok) then
-      LmodError{msg = "e_Unable_2_parse", path = path}
-   end
-
-   declare("modA",{})
-   ok, func = pcall(load, whole)
-   if (not ok or not func) then
-      LmodError{msg = "e_Unable_2_parse", path = path}
-   end
-   func()
-
+   local modA = mrc_load(path)
    local _, _, name = defaultT.fullName:find("(.*)/.*")
 
+   dbg.print{"In versionFile\n"}
+
    defaultT.value = mrc:parseModA_for_moduleA(name,modA)
+
+   dbg.print{"Back in versionFile\n"}
 
    return defaultT
 end
@@ -189,7 +185,7 @@ local function walk(mrc, mpath, path, dirA, fileT)
          local file = pathJoin(path, f)
          if (not keepFile(f)) then break end
 
-         local attr = (f == "default") and lfs.symlinkattributes(file) or lfs.attributes(file) 
+         local attr = (f == "default") and lfs.symlinkattributes(file) or lfs.attributes(file)
          if (attr == nil) then break end
          local kind = attr.mode
 

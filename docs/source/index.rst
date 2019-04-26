@@ -84,6 +84,7 @@ Advanced Topics
    077_ref_counting
    080_hierarchy
    090_configuring_lmod
+   093_modulerc
    095_tcl2lua
    098_dependent_modules
    100_modulefile_examples
@@ -107,6 +108,7 @@ Advanced Topics
    260_sh_to_modulefile
    300_tracking_module_usage
    310_settarg
+   320_improving_perf
 
 Topics yet to be written
 ^^^^^^^^^^^^^^^^^^^^^^^^

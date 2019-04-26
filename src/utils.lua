@@ -1,3 +1,6 @@
+_G._DEBUG          = false
+local posix        = require("posix")
+
 require("strict")
 
 --------------------------------------------------------------------------
@@ -10,7 +13,7 @@ require("strict")
 --
 --  ----------------------------------------------------------------------
 --
---  Copyright (C) 2008-2017 Robert McLay
+--  Copyright (C) 2008-2018 Robert McLay
 --
 --  Permission is hereby granted, free of charge, to any person obtaining
 --  a copy of this software and associated documentation files (the
@@ -40,8 +43,8 @@ require("myGlobals")
 require("pairsByKeys")
 require("string_utils")
 
-_G._DEBUG          = false
 local Version      = require("Version")
+local access       = posix.access
 local arg_0        = arg[0]
 local base64       = require("base64")
 local concatTbl    = table.concat
@@ -54,7 +57,6 @@ local getenv       = os.getenv
 local huge         = math.huge
 local min          = math.min
 local open         = io.open
-local posix        = require("posix")
 local readlink     = posix.readlink
 local setenv_posix = posix.setenv
 local stat         = posix.stat
@@ -64,8 +66,8 @@ local strfmt       = string.format
 -- This is 5.1 Lua function to cover the table.pack function
 -- that is in Lua 5.2 and later.
 function argsPack(...)
-   local arg = { n = select("#", ...), ...}
-   return arg
+   local argA = { n = select("#", ...), ...}
+   return argA
 end
 pack     = (_VERSION == "Lua 5.1") and argsPack or table.pack
 
@@ -81,12 +83,16 @@ end
 -- Generate a message that will fix the available terminal width.
 -- @param width The terminal width
 function buildMsg(width, ... )
-   local arg = pack(...)
-   local a   = {}
-   local len = 0
+   local argA = pack(...)
+   local a    = {}
+   local len  = 0
 
-   for idx = 1, arg.n do
-      local block  = arg[idx]
+   if (argA.n == 1 and argA[1]:len() <= width) then
+      return argA[1]
+   end
+
+   for idx = 1, argA.n do
+      local block  = argA[idx] or ""
       local done   = false
       while (not done) do
          local hasNL  = false
@@ -353,7 +359,7 @@ function readAdmin()
 
       for v in whole:split("\n") do
          repeat
-            v = v:trim()
+            v = v:gsub("%s+$","")
 
             if (v:sub(1,1) == "#") then
                -- ignore this comment line
@@ -361,7 +367,7 @@ function readAdmin()
 
             elseif (v:find("^%s*$")) then
                if (state == "value") then
-                  value             = concatTbl(a, " ")
+                  value             = concatTbl(a, "")
                   for i = 1, #keyA do
                      adminA[#adminA+1] = { keyA[i], value }
                   end
@@ -372,7 +378,7 @@ function readAdmin()
 
                -- Ignore blank lines
             elseif (state == "value") then
-               a[#a+1]     = v:trim()
+               a[#a+1]     = v .. "\n"
             else
                local i     = v:find(":")
                if (i) then
@@ -380,7 +386,7 @@ function readAdmin()
                   for key in k:split('|') do
                      keyA[#keyA+1] = key:trim()
                   end
-                  local s = v:sub(i+1):trim()
+                  local s = v:sub(i+1)
                   if (s:len() > 0) then
                      a[#a+1]  = s
                   end
@@ -423,14 +429,28 @@ end
 -- Get the table of modulerc files with proper weights
 
 function getModuleRCT(remove_MRC_home)
-   local A           = {}
-   local MRC_system  = cosmic:value("LMOD_MODULERCFILE")
-   local MRC_home    = pathJoin(getenv("HOME"), ".modulerc")
-   if (MRC_system and isFile(MRC_system)) then
-      A[#A+1] = { MRC_system, "s"}
+   local A            = {}
+   local MRC_system   = cosmic:value("LMOD_MODULERCFILE")
+   local MRC_home     = pathJoin(getenv("HOME"), ".modulerc")
+   local MRC_home_lua = pathJoin(getenv("HOME"), ".modulerc.lua")
+
+   if (MRC_system) then
+      local a = {}
+      for file in MRC_system:split(":") do
+         if (isFile(file) and access(file,"r")) then
+            a[#a+1] = file
+         end
+      end
+      for i = #a, 1, -1 do
+         A[#A+1] = { a[i], "s"}
+      end
    end
-   if (not remove_MRC_home and isFile(MRC_home)) then
-      A[#A+1] = { MRC_home, "u"}
+   if (not remove_MRC_home) then
+      if (isFile(MRC_home_lua) and access(MRC_home_lua,"r")) then
+         A[#A+1] = { MRC_home_lua, "u"}
+      elseif (isFile(MRC_home) and access(MRC_home,"r")) then
+         A[#A+1] = { MRC_home, "u"}
+      end
    end
    return A
 end
@@ -555,17 +575,6 @@ function regular_cmp(x,y)
 end
 
 
-function runTCLprog(TCLprog, optStr, fn)
-   local a   = {}
-   a[#a + 1] = cosmic:value("LMOD_TCLSH")
-   a[#a + 1] = pathJoin(cmdDir(),TCLprog)
-   a[#a + 1] = optStr or ""
-   a[#a + 1] = path_regularize(fn,true)  -- convert /a/b/../d/e to /a/d/e
-   local cmd = concatTbl(a," ")
-   local whole, status = capture(cmd)
-   return whole, status
-end
-
 function sanizatizeTbl(rplmntA, inT, outT)
    for k, v in pairs(inT) do
       local key = k
@@ -665,14 +674,14 @@ local s_defaultsT = {
 function ShowCmdStr(name, ...)
    dbg.start{"ShowCmdStr(",name,", ...)"}
    local a       = {}
-   local arg     = pack(...)
-   local n       = arg.n
-   local t       = arg
+   local argA    = pack(...)
+   local n       = argA.n
+   local t       = argA
    local hasKeys = false
    local left    = "("
    local right   = ")\n"
-   if (arg.n == 1 and type(arg[1]) == "table") then
-      t       = arg[1]
+   if (argA.n == 1 and type(argA[1]) == "table") then
+      t       = argA[1]
       n       = #t
       hasKeys = true
    end
@@ -794,9 +803,35 @@ function getWarningFlag()
    return s_warning
 end
 
+local function l_runTCLprog(TCLprog, tcl_args)
+   local a   = {}
+   a[#a + 1] = cosmic:value("LMOD_TCLSH")
+   a[#a + 1] = TCLprog
+   a[#a + 1] = tcl_args or ""
+   local cmd = concatTbl(a," ")
+   local whole, status = capture(cmd)
+   return whole, status
+end
+
 --------------------------------------------------------------------------
--- Build function -> accept, epoch, prepend_order_function()
+-- Build function -> accept, epoch, prepend_order_function(), runTCLprog
 --------------------------------------------------------------------------
+
+--------------------------------------------------------------------------
+-- determine which version of runTCLprog to use
+
+local function build_runTCLprog()
+   local fast_tcl_interp = cosmic:value("LMOD_FAST_TCL_INTERP")
+   if (fast_tcl_interp == "no") then
+      _G.runTCLprog = l_runTCLprog
+   else
+      _G.runTCLprog = require("tcl2lua").runTCLprog
+   end
+end
+
+if (not runTCLprog) then
+   build_runTCLprog()
+end
 
 --------------------------------------------------------------------------
 -- Create the accept functions to allow or ignore TCL modulefiles.

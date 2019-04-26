@@ -8,7 +8,7 @@
 --
 --  ----------------------------------------------------------------------
 --
---  Copyright (C) 2008-2017 Robert McLay
+--  Copyright (C) 2008-2018 Robert McLay
 --
 --  Permission is hereby granted, free of charge, to any person obtaining
 --  a copy of this software and associated documentation files (the
@@ -35,6 +35,9 @@
 --------------------------------------------------------------------------
 -- BaseShell:  This is the base class for all the shell output classes.
 
+_G._DEBUG          = false
+local posix        = require("posix")
+
 require("strict")
 require("myGlobals")
 require("inherits")
@@ -55,8 +58,7 @@ local getenv       = os.getenv
 local huge         = math.huge
 local pack         = (_VERSION == "Lua 5.1") and argsPack   or table.pack -- luacheck: compat
 local pairsByKeys  = pairsByKeys
-local posix        = require("posix")
-local setenv_posix = posix.setenv
+local posix_setenv = posix.setenv
 
 --------------------------------------------------------------------------
 -- BaseShell Member functions:
@@ -112,7 +114,6 @@ function M.expand(self, tbl)
       return
    end
 
-
    for k,v in pairsByKeys(tbl) do
       local vstr, vType, priorityStrT, refCountT = v:expand()
       if (next(priorityStrT) ~= nil) then
@@ -145,7 +146,6 @@ function M.expand(self, tbl)
          self:expandVar(k,vstr,vType)
       end
    end
-
    dbg.fini("BaseShell:expand")
 end
 
@@ -190,13 +190,13 @@ end
 function M.echo(self, ...)
    local LMOD_REDIRECT = cosmic:value("LMOD_REDIRECT")
    if (LMOD_REDIRECT == "no") then
-      setenv_posix("LC_ALL",nil,true)
+      posix_setenv("LC_ALL",nil,true)
       pcall(pager,io.stderr,...)
-      setenv_posix("LC_ALL","C",true)
+      posix_setenv("LC_ALL","C",true)
    else
-      local arg = pack(...)
-      for i = 1, arg.n do
-         local whole=arg[i]
+      local argA = pack(...)
+      for i = 1, argA.n do
+         local whole = argA[i]
          if (whole:sub(-1) == "\n") then
             whole = whole:sub(1,-2)
          end
@@ -209,9 +209,9 @@ function M.echo(self, ...)
 end
 
 function M._echo(self, ...)
-   local arg = pack(...)
-   for i = 1, arg.n do
-      io.stderr:write(arg[i])
+   local argA = pack(...)
+   for i = 1, argA.n do
+      io.stderr:write(argA[i])
    end
 end
 
@@ -254,6 +254,7 @@ local function createShellTbl()
          ["cmake"]  = CMake,
          ["bare"]   = Bare,
          ["r"]      = R,
+         ["R"]      = R,
       }
    end
 end

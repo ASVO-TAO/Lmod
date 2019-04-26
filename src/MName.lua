@@ -10,7 +10,7 @@ require("strict")
 --
 --  ----------------------------------------------------------------------
 --
---  Copyright (C) 2008-2017 Robert McLay
+--  Copyright (C) 2008-2018 Robert McLay
 --
 --  Permission is hereby granted, free of charge, to any person obtaining
 --  a copy of this software and associated documentation files (the
@@ -118,11 +118,11 @@ end
 -- @param sType The type which can be "entryT", "load", "mt"
 -- @return An array of MName objects.
 function M.buildA(self,sType, ...)
-   local arg = pack(...)
-   local a = {}
+   local argA = pack(...)
+   local a    = {}
 
-   for i = 1, arg.n do
-      local v = arg[i]
+   for i = 1, argA.n do
+      local v = argA[i]
       if (type(v) == "string" ) then
          a[#a + 1] = self:new(sType, v:trim())
       elseif (type(v) == "table") then
@@ -133,7 +133,7 @@ function M.buildA(self,sType, ...)
 end
 
 local function lazyEval(self)
-   dbg.start{"lazyEval(",self.__userName,")"}
+   --dbg.start{"lazyEval(",self.__userName,")"}
 
    local found   = false
    local sType   = self.__sType
@@ -157,8 +157,8 @@ local function lazyEval(self)
          self.__version    = mt:version(sn)
          self.__stackDepth = mt:stackDepth(sn)
       end
-      dbg.print{"mt\n"}
-      dbg.fini("lazyEval")
+      --dbg.print{"mt\n"}
+      --dbg.fini("lazyEval")
       return
    end
 
@@ -174,8 +174,8 @@ local function lazyEval(self)
          self.__userName = build_fullName(t.sn, t.version)
       end
       
-      dbg.print{"inherit\n"}
-      dbg.fini("lazyEval")
+      --dbg.print{"inherit\n"}
+      --dbg.fini("lazyEval")
       return
    end
 
@@ -195,16 +195,16 @@ local function lazyEval(self)
    self.__stackDepth = self.__stackDepth or frameStk:stackDepth()
    
    if (not sn) then
-      dbg.print{"did not find sn\n"}
-      dbg.fini("lazyEval")
+      --dbg.print{"did not find sn\n"}
+      --dbg.fini("lazyEval")
       return
    end
 
    local stepA   = self:steps()
    local version
    local fn
-   dbg.printT("fileA",fileA)
-   dbg.print{"#stepA: ",#stepA,"\n"}
+   --dbg.printT("fileA",fileA)
+   --dbg.print{"#stepA: ",#stepA,"\n"}
 
    for i = 1, #stepA do
       local func = stepA[i]
@@ -218,8 +218,8 @@ local function lazyEval(self)
          break
       end
    end
-   dbg.print{"fn: ",self.__fn,"\n"}
-   dbg.fini("lazyEval")
+   --dbg.print{"fn: ",self.__fn,"\n"}
+   --dbg.fini("lazyEval")
 end
 
 
@@ -227,7 +227,7 @@ function M.valid(self)
    if (not self.__sn) then
       lazyEval(self)
    end
-   return self.__sn ~= false
+   return self.__fn 
 end       
 
 
@@ -236,20 +236,20 @@ function M.userName(self)
 end
 
 function M.sn(self)
-   dbg.start{"Mname:sn()"}
    if (not self.__sn) then
+      dbg.start{"Mname:sn()"}
       lazyEval(self)
+      dbg.fini("Mname:sn")
    end
-   dbg.fini("Mname:sn")
    return self.__sn
 end
 
 function M.fn(self)
-   dbg.start{"Mname:fn()"}
    if (not self.__fn) then
+      dbg.start{"Mname:fn()"}
       lazyEval(self)
+      dbg.fini("Mname:fn")
    end
-   dbg.fini("Mname:fn")
    return self.__fn
 end
 
@@ -285,7 +285,9 @@ end
 
 function M.fullName(self)
    if (not self.__sn) then
+      dbg.start{"Mname:fullName()"}
       lazyEval(self)
+      dbg.fini("Mname:fullName")
    end
    return build_fullName(self.__sn, self.__version)
 end
@@ -381,9 +383,10 @@ local function find_highest_by_key(key, fileA)
    local version = false
 
    for j = 1,#a do
-      local entry    = a[j]
-      local fullName = entry.fullName
-      local v        = entry[key]
+      local entry = a[j]
+      local v     = entry[key]
+      dbg.print{"find_highest: sn: ", entry.sn,", fullName: ",entry.fullName,", key: ",key,", v: ",v,"\n"}
+      
       if (mrc:isVisible({fullName=entry.fullName,sn=entry.sn,fn=entry.fn}) or isMarked(v)) then
          if (v > weight) then
             idx    = j

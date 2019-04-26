@@ -17,7 +17,7 @@ require("strict")
 --
 --  ----------------------------------------------------------------------
 --
---  Copyright (C) 2008-2017 Robert McLay
+--  Copyright (C) 2008-2018 Robert McLay
 --
 --  Permission is hereby granted, free of charge, to any person obtaining
 --  a copy of this software and associated documentation files (the
@@ -52,7 +52,6 @@ local RCFileA = {
    pathJoin(cmdDir(),"../../etc/lmodrc.lua"),
    pathJoin("/etc/lmodrc.lua"),
    pathJoin(getenv("HOME"),".lmodrc.lua"),
-   getenv("LMOD_RC"),
 }
 
 local s_classObj    = false
@@ -66,6 +65,13 @@ local function buildRC(self)
    local s_scDescriptT = {}
    local s_rcFileA     = {}
    
+   local lmodrc_env = getenv("LMOD_RC") or ""
+   if (lmodrc_env:len() > 0) then
+      for rc in lmodrc_env:split(":") do
+         RCFileA[#RCFileA+1] = rc
+      end
+   end
+
    for i = 1,#RCFileA do
       repeat
          local f  = RCFileA[i]

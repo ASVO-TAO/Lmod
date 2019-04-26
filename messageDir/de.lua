@@ -8,7 +8,7 @@
 --
 --  ----------------------------------------------------------------------
 --
---  Copyright (C) 2008-2017 Robert McLay
+--  Copyright (C) 2008-2018 Robert McLay
 --
 --  Permission is hereby granted, free of charge, to any person obtaining
 --  a copy of this software and associated documentation files (the
@@ -69,6 +69,7 @@ return {
   Geben Sie "ml --help" für Informationen zur Verwendung ein.
 ]==],
      ml_2many              = "ml Fehler: zu viele Befehle\n",
+     ml_misplaced_opt      = nil,
 
      --------------------------------------------------------------------------
      -- LmodError messages
@@ -143,6 +144,7 @@ Alternativ können Sie die Umgebungsvariable LMOD_DISABLE_SAME_NAME_AUTOSWAP auf
      %{fn}: %{message}
 ]==], --
      e_Unable_2_parse      = "Nicht einlesbar: \"%{path}\". Abbruch!\n",
+     e_Unable_2_rename     = nil,
      e_Unknown_Coll        = [==[Benutzer-Modulsammlung: "%{collection}" existiert nicht.
   "module savelist" zeigt mögliche Werte.
 ]==],
@@ -163,6 +165,7 @@ Alternativ können Sie die Umgebungsvariable LMOD_DISABLE_SAME_NAME_AUTOSWAP auf
      m_Family_Swap         = "\nLmod hat \"%{oldFullName}\" automatisch durch \"%{newFullName}\" ersetzt.\n",
      m_For_System          = ", für das System: \"%{sname}\"",
      m_Inactive_Modules    = "\nInaktive Module:\n",
+     m_IsNVV               = nil,
      m_Module_Msgs         = [==[
 %{border}
 Es gibt Meldungen, die zu den folgenden Modulen gehören:

@@ -8,7 +8,7 @@
 --
 --  ----------------------------------------------------------------------
 --
---  Copyright (C) 2008-2017 Robert McLay
+--  Copyright (C) 2008-2018 Robert McLay
 --
 --  Permission is hereby granted, free of charge, to any person obtaining
 --  a copy of this software and associated documentation files (the
@@ -60,9 +60,7 @@ end
 
 function R.expandVar(self, k, v, vType)
    local lineA = {}
-   v = tostring(v):multiEscaped()
-   io.stderr:write("v: ",v,"\n")
-
+   v = tostring(v):doubleQuoteString()
    lineA[#lineA + 1] = 'Sys.setenv("'
    lineA[#lineA + 1] = k
    lineA[#lineA + 1] = '"='

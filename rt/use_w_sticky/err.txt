@@ -2,7 +2,7 @@
 step 1
 lua ProjectDIR/src/lmod.in.lua bash --regression_testing --version
 ===========================
-Modules based on Lua: Version 7.6.12  2017-09-01 18:59 -05:00
+Modules based on Lua: Version 7.8.15  2019-01-16 12:46 -06:00
     by Robert McLay mclay@tacc.utexas.edu
 ===========================
 step 2
@@ -30,9 +30,10 @@ lua ProjectDIR/src/lmod.in.lua bash --regression_testing -T use ProjectDIR/rt/us
 running: module --regression_testing -T use ProjectDIR/rt/use_w_sticky/mf/Other ProjectDIR/rt/use_w_sticky/mf/A
   Prepending: ProjectDIR/rt/use_w_sticky/mf/Other to MODULEPATH
   Prepending: ProjectDIR/rt/use_w_sticky/mf/A to MODULEPATH
-  Unloading: HPCBIOS (fn: ProjectDIR/rt/use_w_sticky/mf/Core/HPCBIOS/2016q2.lua)
+  reloadAll(1)(HPCBIOS)
+  (1)(1)Unloading: HPCBIOS (status: active) (fn: ProjectDIR/rt/use_w_sticky/mf/Core/HPCBIOS/2016q2.lua)
     Removing: ProjectDIR/rt/use_w_sticky/mf/Other from MODULEPATH
-  Loading: HPCBIOS (fn: nil)
+  reloadAll(2)()
 Inactive Modules:
   1) HPCBIOS
 ===========================

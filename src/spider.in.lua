@@ -15,7 +15,7 @@
 --
 --  ----------------------------------------------------------------------
 --
---  Copyright (C) 2008-2017 Robert McLay
+--  Copyright (C) 2008-2018 Robert McLay
 --
 --  Permission is hereby granted, free of charge, to any person obtaining
 --  a copy of this software and associated documentation files (the
@@ -52,14 +52,21 @@ end
 package.path   = sys_lua_path
 package.cpath  = sys_lua_cpath
 
+_G._DEBUG      = false
 local arg_0    = arg[0]
 local posix    = require("posix")
 local readlink = posix.readlink
 local stat     = posix.stat
+local access   = posix.access
 
 local st       = stat(arg_0)
 while (st.type == "link") do
-   arg_0 = readlink(arg_0)
+   local lnk = readlink(arg_0)
+   if (arg_0:find("/") and (lnk:find("^/") == nil)) then
+      local dir = arg_0:gsub("/[^/]*$","")
+      lnk       = dir .. "/" .. lnk
+   end
+   arg_0 = lnk
    st    = stat(arg_0)
 end
 
@@ -170,9 +177,14 @@ end
 -- @param rmapT
 -- @param kind
 local function add2map(entry, tbl, dirA, moduleFn, rmapT, kind)
+   dbg.start{"add2map(entry, tbl, dirA, moduleFn, rmapT, kind)"}
    for path in pairs(tbl) do
       local attr = lfs.attributes(path)
-      if (keepThisPath2(path,dirA) and attr and attr.mode == "directory") then
+      local a    = attr or {}
+      local keep = keepThisPath2(path,dirA)
+      dbg.print{"path: ",path,", keep: ",keep,", attr.mode: ",a.mode,"\n"}
+
+      if (keep and attr and attr.mode == "directory") then
          path = abspath(path)
          local t       = rmapT[path] or {pkg=entry.fullName, kind = kind, moduleFn = moduleFn, flavorT = {}}
          local flavorT = t.flavorT
@@ -189,9 +201,11 @@ local function add2map(entry, tbl, dirA, moduleFn, rmapT, kind)
                flavorT[key] = true
             end
          end
+         dbg.print{"assigning rmapT for path: ",path,"\n"}
          rmapT[path] = t
       end
    end
+   dbg.fini("add2map")
 end
 
 --------------------------------------------------------------------------
@@ -223,10 +237,12 @@ local function rptSpiderT(mpathMapT, spiderT, timestampFn, dbT)
 end
 
 local function buildReverseMapT(dbT)
+   dbg.start{"buildReverseMapT(dbT)"}
    local reverseMapT = {}
 
    for sn,vvv in pairs(dbT) do
       for fn, entry in pairs(vvv) do
+         dbg.print{"sn: ",sn,", fn: ",fn,"\n"}
          if (entry.pathA) then
             add2map(entry, entry.pathA,  entry.dirA, fn, reverseMapT, "bin")
          end
@@ -249,6 +265,7 @@ local function buildReverseMapT(dbT)
       sort(flavor)
       vv.flavor  = flavor
    end
+   dbg.fini("buildReverseMapT")
    return reverseMapT
 end
 
@@ -271,10 +288,14 @@ local function buildLibMapA(reverseMapT)
    for path,v in pairs(reverseMapT) do
       local kind = v.kind
       if (kind == "lib") then
-         for file in lfs.dir(path) do
-            local ext = extname(file)
-            if (ext == ".a" or ext == ".so" or ext == ".dylib") then
-               libT[file] = true
+         local attr = lfs.attributes(path)
+         if (attr and type(attr) == "table" and attr.mode == "directory" and
+                access(path,"x")) then
+            for file in lfs.dir(path) do
+               local ext = extname(file)
+               if (ext == ".a" or ext == ".so" or ext == ".dylib") then
+                  libT[file] = true
+               end
             end
          end
       end
@@ -385,7 +406,12 @@ function main()
 
    for _, v in ipairs(pargs) do
       for path in v:split(":") do
-         mpathA[#mpathA+1] = path_regularize(path)
+         local my_path     = path_regularize(path)
+         if (my_path:sub(1,1) ~= "/") then
+            io.stderr:write("Each path in MODULEPATH must be absolute: ",path,"\n")
+            os.exit(1)
+         end
+         mpathA[#mpathA+1] = my_path
       end
    end
    local mpath = concatTbl(mpathA,":")
@@ -497,6 +523,7 @@ function convertEntry(name, vv, spA)
 
    local keyT = {
       Version     = "versionName",
+      Description = "description",
       fullName    = "full",
       help        = "help",
       parentAA    = "parent",
@@ -508,7 +535,7 @@ function convertEntry(name, vv, spA)
 
    local entry    = {}
    entry.package  = name
-   local versionT = {}
+   local versionA = {}
 
    local wV       = " "  -- This is the lowest possible value for a pV
    local epoch    = 0
@@ -560,10 +587,12 @@ function convertEntry(name, vv, spA)
          vT.markedDefault=isMarked(v.wV)
       end
 
-      versionT[#versionT + 1] = vT
+      if (not vT.hidden) then
+         versionA[#versionA + 1] = vT
+      end
    end
 
-   entry.versions = versionT
+   entry.versions = versionA
    spA[#spA+1] = entry
 end
 

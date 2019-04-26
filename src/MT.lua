@@ -5,6 +5,9 @@
 --
 -- @classmod MT
 
+_G._DEBUG          = false
+local posix        = require("posix")
+
 require("strict")
 
 --------------------------------------------------------------------------
@@ -17,7 +20,7 @@ require("strict")
 --
 --  ----------------------------------------------------------------------
 --
---  Copyright (C) 2008-2017 Robert McLay
+--  Copyright (C) 2008-2018 Robert McLay
 --
 --  Permission is hereby granted, free of charge, to any person obtaining
 --  a copy of this software and associated documentation files (the
@@ -61,7 +64,6 @@ local hook         = require("Hook")
 local i18n         = require("i18n")
 local load         = (_VERSION == "Lua 5.1") and loadstring or load
 local min          = math.min
-local posix        = require("posix")
 local posix_setenv = posix.setenv
 local s_loadOrder  = 0
 local s_mt         = false
@@ -1033,13 +1035,10 @@ function M.getMTfromFile(self,tt)
 
    local restoreFn = tt.fn
    dbg.print{"s: ",s,"\n"}
-   local l_mt      = new(self, s, restoreFn)
-   local activeA   = l_mt:list("userName","active")
-
+   local l_mt       = new(self, s, restoreFn)
+   local activeA    = l_mt:list("userName","active")
    local savedMPATH = concatTbl(l_mt.mpathA,":")
-   
-   local tracing = cosmic:value("LMOD_TRACING")
-
+   local tracing    = cosmic:value("LMOD_TRACING")
 
    ---------------------------------------------
    -- If any module specified in the "default" file
@@ -1073,11 +1072,11 @@ function M.getMTfromFile(self,tt)
    -- Build a new MT with only the savedBaseMPATH from before.
    -- This means resetting s_mt, s_frameStk and defining
    -- MODULEPATH in the environment.  Then we can rebuild a fresh
-   -- FrameStk and MT.
-
+   -- FrameStk and MT.  
    local FrameStk = require("FrameStk")
    local frameStk = FrameStk:singleton()
    local mt       = frameStk:mt()
+
    dbg.print{"(1) mt.systemBaseMPATH: ",mt.systemBaseMPATH,"\n"}
    dbg.print{"savedBaseMPATH: ",savedBaseMPATH,"\n"}
    s              = serializeTbl{indent=true, name=s_name, value=mt}
@@ -1141,9 +1140,11 @@ function M.getMTfromFile(self,tt)
       mA[#mA+1]   = mname
    end
    MCP.load(mcp,mA)
-   mcp = mcp_old
+   mcp        = mcp_old
    dbg.print{"Setting mcp to ", mcp:name(),"\n"}
-   mt = frameStk:mt()
+   mt         = frameStk:mt()
+   local varT = frameStk:varT()
+   varT[ModulePath]:setRefCount(l_mt.mpathRefCountT or {})
    
    -----------------------------------------------------------------------
    -- Now check to see that all requested modules got loaded.
@@ -1206,14 +1207,26 @@ function M.getMTfromFile(self,tt)
    -- read in.
 
    if (collectionName == "default") then
-      local Var = require("Var")
-      local n = "__LMOD_DEFAULT_MODULES_LOADED__"
+      local Var  = require("Var")
+      local n    = "__LMOD_DEFAULT_MODULES_LOADED__"
       local varT = frameStk:varT()
-      varT[n] = Var:new(n,"1")
+      varT[n]    = Var:new(n,"1")
    end
    mt = frameStk:mt()
    dbg.fini("MT:getMTfromFile")
    return true
+end
+
+function M.setMpathRefCountT(self, refCountT)
+   self.mpathRefCountT = refCountT
+end
+function M.hideMpathRefCountT(self, refCountT)
+   self.mpathRefCountT = nil
+end
+
+function M.resetMPATH2system(self)
+   self.mpathA = path2pathA(self.systemBaseMPATH)
+   return self.systemBaseMPATH
 end
 
 return M

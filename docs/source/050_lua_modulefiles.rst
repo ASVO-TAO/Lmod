@@ -35,14 +35,13 @@ unset during unloading.
    separator can be any single character for example " " or  ";"
 
 **remove_path** ("PATH","*/path/to/pkg/bin*"):
-   remove value from a path-like variable.  This command is a no-op
-   when the mode is unload. 
+   remove value from a path-like variable for both load and unload modes.
 
 **remove_path** ("PATH","*/path/to/pkg/bin*" , "*sep*" ):
-   remove value from a path-like variable.  This command is a no-op
-   when the mode is unload.  It is possible to add a
-   third argument to be the separator.  By default is is "*:*", the
-   separator can be any single character for example " " or  ";"
+   remove value from a path-like variable for both load and unload modes.
+   It is possible to add a third argument to be the separator.  By
+   default is is "*:*", the separator can be any single character for
+   example " " or  ";" 
 
 **setenv** ("NAME", "*value*"):
    assigns to the environment variable "NAME" the value.
@@ -51,6 +50,9 @@ unset during unloading.
    sets **NAME** to *value* just like **setenv**.  In addition it
    saves the previous value in a hidden environment variable.  This
    way the previous state can be returned when a module is unloaded.
+   **pushenv** ("FOO",false) will clear "FOO" and the pop will return
+   the previous value.
+
 
 **unsetenv** ("NAME"):
    unset the value associated with "NAME".  This command is a no-op
@@ -80,6 +82,12 @@ unset during unloading.
 **try_load** ("pkgA", "pkgB", "pkgC"):
      load all modules. No errors reported if unable to load.
 
+**mgrload** (required, active_object):
+     load a single module file. If required is true then error out if
+     not found.  If false then no message is generated.  Returns true
+     if successful.  See :ref:`site_package_mgrload` for details.
+
+
 **always_load** ("pkgA", "pkgB", "pkgC"):
      load all modules. However when this command is reversed it does nothing.
 
@@ -87,9 +95,8 @@ unset during unloading.
      define an alias to name with value.
 
 **unload** ("pkgA", "pkgB"):
-     When in load mode the modulefiles are unloaded.  It is not an
-     error to unload modules that where not loaded.  When in unload
-     mode, this command does nothing.
+     In both load and unload mode, the modulefiles are unloaded. It is
+     not an error to unload modules that where not loaded.
 
 **family** ("name"):
      A user can only have one family "name" loaded at a time. For example family("compiler") would mean that a user could only have one compiler loaded at a time.

@@ -1,3 +1,6 @@
+_G._DEBUG          = false               -- Required by the new lua posix
+local posix        = require("posix")
+
 require("strict")
 
 --------------------------------------------------------------------------
@@ -10,7 +13,7 @@ require("strict")
 --
 --  ----------------------------------------------------------------------
 --
---  Copyright (C) 2008-2017 Robert McLay
+--  Copyright (C) 2008-2018 Robert McLay
 --
 --  Permission is hereby granted, free of charge, to any person obtaining
 --  a copy of this software and associated documentation files (the
@@ -42,7 +45,6 @@ require("serializeTbl")
 require("deepcopy")
 require("loadModuleFile")
 
-_G._DEBUG          = false               -- Required by the new lua posix
 local Banner       = require("Banner")
 local M            = {}
 local MRC          = require("MRC")
@@ -57,7 +59,6 @@ local getenv       = os.getenv
 local hook         = require("Hook")
 local i18n         = require("i18n")
 local lfs          = require("lfs")
-local posix        = require("posix")
 local access       = posix.access
 
 KeyT = {Description=true, Name=true, URL=true, Version=true, Category=true, Keyword=true}
@@ -83,6 +84,10 @@ local function process(kind, value)
    for path in value:split(":") do
       path         = path_regularize(path)
       a[path]      = 1
+      local p2     = abspath(path)
+      if (p2 and p2 ~= path) then
+         a[p2]     = 1
+      end
    end
    moduleT[kind] = a
 end
@@ -161,7 +166,7 @@ local function findModules(mpath, mt, mList, sn, v, moduleT)
 
       if (tracing == "yes") then
          local b          = {}
-         b[#b + 1]        = "Loading: "
+         b[#b + 1]        = "Spider Loading: "
          b[#b + 1]        = fullName
          b[#b + 1]        = " (fn: "
          b[#b + 1]        = fn or "nil"
@@ -169,7 +174,7 @@ local function findModules(mpath, mt, mList, sn, v, moduleT)
          shell:echo(concatTbl(b,""))
       end
 
-      loadModuleFile{file=fn, shell=shellNm, reportErr=true, mList = mList}
+      loadModuleFile{file=fn, help=true, shell=shellNm, reportErr=true, mList = mList}
       hook.apply("load_spider",{fn = fn, modFullName = fullName, sn = sn})
       mt:setStatus(sn, "active")
    end
@@ -331,8 +336,8 @@ end
 
 function copy(a)
    local b = {}
-   for i = 1, #a do
-      b[i] = a[i]
+   for k,v in pairs(a) do
+      b[k] = v
    end
    return b
 end
@@ -387,21 +392,35 @@ end
 -- python after yours truly couldn't work it out.
 
 local function l_build_parentT(keepT, mpathMapT)
+   --dbg.start{"l_build_parentT(keepT, mpathMapT)"}
+   --dbg.printT("keepT",keepT)
+   --dbg.printT("mpathMapT",mpathMapT)
 
-   local function l_build_parentT_helper( mpath, fullNameA)
+   local function l_build_parentT_helper( mpath, fullNameA, fullNameT)
+      --dbg.start{"l_build_parentT_helper(mpath, fullNameA, fullNameT)"}
+      --dbg.print{"mpath: ",mpath,"\n"}
+      --dbg.printT("fullNameA: ",fullNameA)
+      --dbg.printT("fullNameT: ",fullNameT)
+      
       local resultA
       if (not mpathMapT[mpath]) then
          resultA = { fullNameA }
       else
          resultA = {}
          for fullName, mpath2 in pairs(mpathMapT[mpath]) do
-            local tmpA    = copy(fullNameA)
-            if (keepT[mpath2]) then
-               tmpA[#tmpA+1] = fullName
+            if (not fullNameT[fullName]) then
+               local tmpA    = copy(fullNameA)
+               local tmpT    = copy(fullNameT)
+               if (keepT[mpath2]) then
+                  tmpA[#tmpA+1]  = fullName
+                  tmpT[fullName] = true
+               end
+               resultA = extend(resultA, l_build_parentT_helper(mpath2, tmpA, tmpT))
             end
-            resultA = extend(resultA, l_build_parentT_helper(mpath2, tmpA))
          end
       end
+      --dbg.printT("resultA",resultA)
+      --dbg.fini("l_build_parentT_helper")
       return resultA
    end
 
@@ -411,7 +430,7 @@ local function l_build_parentT(keepT, mpathMapT)
       local A        = parentT[mpath]
 
       for fullName, mpath2 in pairs(v) do
-         A = extend(A, l_build_parentT_helper(mpath2, {fullName}))
+         A = extend(A, l_build_parentT_helper(mpath2, {fullName}, {[fullName] = true}))
       end
    end
 
@@ -421,6 +440,8 @@ local function l_build_parentT(keepT, mpathMapT)
       end
    end
 
+   --dbg.printT("parentT",parentT)
+   --dbg.fini("l_build_parentT")
    return parentT
 end
 
@@ -506,7 +527,8 @@ function M.buildDbT(self, mpathA, mpathMapT, spiderT, dbT)
          t.fullName     = sn
          t.hidden       = not mrc:isVisible({fullName=sn, sn=sn, fn=v.file})
          T[v.file]      = t
-      elseif (next(v.fileT) ~= nil) then
+      end
+      if (next(v.fileT) ~= nil) then
          for fullName, vv in pairs(v.fileT) do
             local t = {}
             for i = 1,#dbT_keyA do
@@ -518,7 +540,8 @@ function M.buildDbT(self, mpathA, mpathMapT, spiderT, dbT)
             t.hidden     = not mrc:isVisible({fullName=fullName, sn=sn, fn=vv.fn})
             T[vv.fn]     = t
          end
-      elseif (next(v.dirT) ~= nil) then
+      end
+      if (next(v.dirT) ~= nil) then
          for name, vv in pairs(v.dirT) do
             buildDbT_helper(mpath, sn, vv, T)
          end

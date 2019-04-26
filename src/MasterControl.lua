@@ -10,7 +10,7 @@ require("strict")
 --
 --  ----------------------------------------------------------------------
 --
---  Copyright (C) 2008-2017 Robert McLay
+--  Copyright (C) 2008-2018 Robert McLay
 --
 --  Permission is hereby granted, free of charge, to any person obtaining
 --  a copy of this software and associated documentation files (the
@@ -57,6 +57,7 @@ local getenv       = os.getenv
 local hook         = require("Hook")
 local i18n         = require("i18n")
 local Cache        = require("Cache")
+local max          = math.max
 local pack         = (_VERSION == "Lua 5.1") and argsPack or table.pack -- luacheck: compat
 local remove       = table.remove
 local s_adminT     = {}
@@ -267,9 +268,13 @@ function M.pushenv(self, name, value)
       varT[stackName] = Var:new(stackName, v64, nodups, ":")
    end
 
-
-   v   = tostring(value)
-   v64 = encode64(value)
+   if (value == false) then
+      v   = false
+      v64 = "false"
+   else
+      v   = tostring(value)
+      v64 = encode64(value)
+   end
    local priority = 0
 
    varT[stackName]:prepend(v64, nodups, priority)
@@ -304,7 +309,9 @@ function M.popenv(self, name, value)
 
    local v64 = varT[stackName]:pop()
    local v   = nil
-   if (v64) then
+   if (v64 == "false") then
+      v = false 
+   elseif (v64) then
       v = decode64(v64)
    end
    dbg.print{"v: ", v,"\n"}
@@ -386,7 +393,7 @@ end
 --------------------------------------------------------------------------
 -- Remove an entry from a path like variable.
 -- @param self A MasterControl object
--- @param t A table containing { name, value, nodups=v1, priority=v2, where=v3}
+-- @param t A table containing { name, value, nodups=v1, priority=v2, where=v3, force=v4}
 function M.remove_path(self, t)
    local sep      = t.delim or ":"
    local name     = t[1]
@@ -396,20 +403,22 @@ function M.remove_path(self, t)
    local where    = t.where
    local frameStk = FrameStk:singleton()
    local varT     = frameStk:varT()
+   local force    = t.force
 
    dbg.start{"MasterControl:remove_path{\"",name,"\", \"",value,
              "\", delim=\"",sep,"\", nodups=\"",nodups,
              "\", priority=",priority,
              ", where=",where,
+             ", force=",force,
              "}"}
 
    -- Do not allow dups on MODULEPATH like env vars.
-   nodups = name == ModulePath or nodups
+   nodups = (name == ModulePath) or nodups
 
    if (varT[name] == nil) then
       varT[name] = Var:new(name,nil, nodups, sep)
    end
-   varT[name]:remove(tostring(value), where, priority, nodups)
+   varT[name]:remove(tostring(value), where, priority, nodups, force)
    dbg.fini("MasterControl:remove_path")
 end
 
@@ -608,11 +617,11 @@ end
 local function l_generateMsg(kind, label, ...)
    local sA     = {}
    local twidth = TermWidth()
-   local arg    = pack(...)
-   if (arg.n == 1 and type(arg[1]) == "table") then
-      local t   = arg[1]
+   local argA   = pack(...)
+   if (argA.n == 1 and type(argA[1]) == "table") then
+      local t   = argA[1]
       local key = t.msg
-      local msg = i18n(key, t)
+      local msg = i18n(key, t) or "Unknown Error Message"
       msg       = hook.apply("errWarnMsgHook", kind, key, msg, t) or msg
       sA[#sA+1] = buildMsg(twidth, label, msg)
    else
@@ -620,6 +629,17 @@ local function l_generateMsg(kind, label, ...)
    end
    return sA
 end
+
+function M.msg_raw(self, ...)
+   if (quiet()) then
+      return
+   end
+   local argA   = pack(...)
+   for i = 1,argA.n do
+      io.stderr:write(argA[i])
+   end
+end
+
 
 --------------------------------------------------------------------------
 -- Print msgs to stderr.
@@ -630,11 +650,11 @@ function M.message(self, ...)
    end
    local sA     = {}
    local twidth = TermWidth()
-   local arg    = pack(...)
-   if (arg.n == 1 and type(arg[1]) == "table") then
-      local t   = arg[1]
+   local argA   = pack(...)
+   if (argA.n == 1 and type(argA[1]) == "table") then
+      local t   = argA[1]
       local key = t.msg
-      local msg = i18n(key, t)
+      local msg = i18n(key, t) or "Unknown Message"
       msg       = hook.apply("errWarnMsgHook", "lmodmessage", key, msg, t) or msg
       sA[#sA+1] = buildMsg(twidth, msg)
    else
@@ -971,8 +991,7 @@ function M.depends_on(self, mA)
    for i = 1,#mA do
       local mname      = mA[i]
       local sn         = mname:sn()
-      local stackDepth = mt:stackDepth(sn)
-      if (stackDepth > 0) then
+      if (sn and mt:stackDepth(sn) > 0) then
          mt:incr_ref_count(sn)
       end
    end
@@ -1072,6 +1091,38 @@ function M.load(self, mA)
    dbg.fini("MasterControl:load")
    return a
 end
+
+
+
+function M.mgrload(self, required, active)
+   if (dbg.active()) then
+      dbg.start{"MasterControl:mgrload(required: ",required,", active=",active.userName,")"}
+   end
+
+   if (not required) then
+      deactivateWarning()
+   else
+      activateWarning()
+   end
+
+   local status = Master:singleton():mgrload(active)
+
+   dbg.fini("MasterControl:mgrload")
+   return status
+end
+
+function M.mgr_unload(self, required, active)
+   if (dbg.active()) then
+      dbg.start{"MasterControl:mgr_unload(required: ",required,", active=",active.userName,")"}
+   end
+   
+   local status = MCP:unload(MName:new("mt", active.userName))
+
+   dbg.fini("MasterControl:mgr_unload")
+   return status
+end
+
+
 
 -------------------------------------------------------------------
 -- Load a list of module but ignore any warnings.
@@ -1229,7 +1280,8 @@ end
 -- @param sn The new module name.
 function M.familyStackPush(oldName, sn)
    dbg.start{"familyStackPush(",oldName,", ", sn,")"}
-   local mt             = FrameStk:singleton():mt()
+   local frameStk       = FrameStk:singleton()
+   local mt             = frameStk:mt()
    local old_userName   = mt:userName(oldName)
    dbg.print{"removing old sn: ",oldName,",old userName: ",old_userName,"\n"}
 
@@ -1259,6 +1311,16 @@ function M.familyStackPop()
    local valueO = s_moduleStk[#s_moduleStk]
    remove(s_moduleStk)
    return valueO, valueN
+end
+
+--------------------------------------------------------------------------
+-- Check for an empty stack.
+-- @return True if the stack is empty.
+function M.processFamilyStack(fullName)
+   if (next(s_moduleStk) ~= nil) then
+      return fullName == s_moduleStk[#s_moduleStk].fullName
+   end
+   return false
 end
 
 --------------------------------------------------------------------------
@@ -1322,12 +1384,12 @@ function M.registerAdminMsg(self, mA)
 
          for i = 1, #adminA do
             local pattern = adminA[i][1]
-            if (fullName:find(pattern)) then
+            if (fullName:find(pattern) or fullName == pattern) then
                message = adminA[i][2]
                key     = fullName
                break
             end
-            if (pattern:sub(1,1) == '/' and fn:find(pattern)) then
+            if (pattern:sub(1,1) == '/' and (fn:find(pattern) or fn == pattern)) then
                message = adminA[i][2]
                key     = fullName
                break
@@ -1355,8 +1417,16 @@ function M.reportAdminMsgs()
       for k, v in pairsByKeys(t) do
          io.stderr:write("\n",k,":\n")
          a[1] = { " ", v}
-         bt = BeautifulTbl:new{tbl=a, wrapped=true, column=term_width-1}
-         io.stderr:write(bt:build_tbl(), "\n")
+         local maxLen = 0
+         for line in v:split("\n") do
+            maxLen = max(line:len(), maxLen)
+         end
+         if (maxLen < term_width - 1) then
+            io.stderr:write(v,"\n")
+         else
+            bt = BeautifulTbl:new{tbl=a, wrapped=true, column=term_width-1}
+            io.stderr:write(bt:build_tbl(), "\n")
+         end
       end
       io.stderr:write(border,"\n\n")
    end
@@ -1366,9 +1436,12 @@ end
 --------------------------------------------------------------------------
 -- Provide a list of modules for sites to use
 function M.loaded_modules(self)
+   dbg.start{"MasterControl::loaded_modules()"}
    local frameStk  = FrameStk:singleton()
    local mt        = frameStk:mt()
-   return mt:list("fullName","active")
+   local mA        = mt:list("fullName","active")
+   dbg.fini("MasterControl::loaded_modules")
+   return mA
 end
 
 

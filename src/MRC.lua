@@ -1,5 +1,4 @@
---------------------------------------------------------------------------
--- This class is a singleton controlling the version and alias mapping.
+
 -- Site create .modulerc files to specify that certain strings can be
 -- also know as.  Here are some examples:
 --
@@ -29,7 +28,7 @@ require("strict")
 --
 --  ----------------------------------------------------------------------
 --
---  Copyright (C) 2008-2017 Robert McLay
+--  Copyright (C) 2008-2018 Robert McLay
 --
 --  Permission is hereby granted, free of charge, to any person obtaining
 --  a copy of this software and associated documentation files (the
@@ -55,6 +54,7 @@ require("strict")
 
 require("fileOps")
 require("utils")
+require("mrc_load")
 
 local M         = {}
 local dbg       = require("Dbg"):dbg()
@@ -63,6 +63,12 @@ local getenv    = os.getenv
 local load      = (_VERSION == "Lua 5.1") and loadstring or load
 local s_MRC     = false
 local hook      = require("Hook")
+
+local function argsPack(...)
+   local argA = { n = select("#", ...), ...}
+   return argA
+end
+local pack      = (_VERSION == "Lua 5.1") and argsPack or table.pack  -- luacheck: compat
 
 ------------------------------------------------------------------------
 -- Local functions
@@ -79,7 +85,7 @@ local function new(self, fnA)
    o.__alias2modT    = {}  -- Map an alias string to a module name or alias
    o.__fullNameDfltT = {}
    o.__defaultT      = {}  -- Map module sn to fullname that is the default.
-   o.__hiddenT       = {}  -- Table of hidden module names.
+   o.__hiddenT       = {}  -- Table of hidden module names and modulefiles.
    o.__mod2versionT  = {}  -- Map from full module name to versions.
    o.__full2aliasesT = {}
 
@@ -98,38 +104,22 @@ end
 
 
 function M.singleton(self, fnA)
-   dbg.start{"MRC:singleton()"}
+   --dbg.start{"MRC:singleton()"}
    if (not s_MRC) then
       s_MRC = new(self, fnA)
    end
-   dbg.fini("MRC:singleton")
+   --dbg.fini("MRC:singleton")
    return s_MRC
 end
 
 
 function l_build(self, fnA)
    dbg.start{"MRC l_build(self,fnA)"}
-   -- modA gets the contents of the modulerc
-   declare("modA",{})
-   local whole
-   local ok
-   local func
-
    for i = 1, #fnA do
       local fn     = fnA[i][1]
       if (isFile(fn)) then
          local weight = fnA[i][2]
-         whole, ok = runTCLprog("RC2lua.tcl", "", fn)
-         if (not ok) then
-            LmodError{msg = "e_Unable_2_parse", path = fn}
-         end
-
-         ok, func = pcall(load, whole)
-         if (not ok or not func) then
-            LmodError{msg = "e_Unable_2_parse", path = fn}
-         end
-         func()
-
+         local modA   = mrc_load(fn)
          l_parseModA(self, modA, weight)
       end
    end
@@ -143,7 +133,7 @@ function l_parseModA(self, modA, weight)
          local entry = modA[i]
          dbg.print{"entry.kind: ",entry.kind, "\n"}
 
-         if (entry.kind == "module-version") then
+         if (entry.kind == "module_version") then
             local fullName = entry.module_name
             fullName = self:resolve(fullName)
             dbg.print{"self:resolve(fullName): ",fullName, "\n"}
@@ -168,10 +158,13 @@ function l_parseModA(self, modA, weight)
                   dbg.print{"v2m: key: ",key,": ",fullName,"\n"}
                end
             end
-         elseif (entry.kind == "module-alias") then
+         elseif (entry.kind == "module_alias") then
             dbg.print{"name: ",entry.name,", mfile: ", entry.mfile,"\n"}
             self.__alias2modT[entry.name] = entry.mfile
-         elseif (entry.kind == "hide-version") then
+         elseif (entry.kind == "hide_version") then
+            dbg.print{"mfile: ", entry.mfile,"\n"}
+            self.__hiddenT[entry.mfile] = true
+         elseif (entry.kind == "hide_modulefile") then
             dbg.print{"mfile: ", entry.mfile,"\n"}
             self.__hiddenT[entry.mfile] = true
          end
@@ -254,7 +247,7 @@ function M.parseModA_for_moduleA(self, name, modA)
       local entry = modA[i]
       dbg.print{"entry.kind: ",entry.kind, "\n"}
 
-      if (entry.kind == "module-version") then
+      if (entry.kind == "module_version") then
          local fullName = entry.module_name
          if (fullName:sub(1,1) == '/') then
             fullName = name .. fullName
@@ -277,10 +270,10 @@ function M.parseModA_for_moduleA(self, name, modA)
                dbg.print{"v2m: key: ",key,": ",fullName,"\n"}
             end
          end
-      elseif (entry.kind == "set-default-version") then
+      elseif (entry.kind == "set_default_version") then
          dbg.print{"version: ",entry.version,"\n"}
          defaultV = entry.version
-      elseif (entry.kind == "module-alias") then
+      elseif (entry.kind == "module_alias") then
          local fullName = entry.name
          if (fullName:sub(1,1) == '/') then
             fullName = name .. fullName
@@ -292,7 +285,10 @@ function M.parseModA_for_moduleA(self, name, modA)
          end
          dbg.print{"fullName: ",fullName,", mfile: ", mfile,"\n"}
          self.__alias2modT[fullName] = mfile
-      elseif (entry.kind == "hide-version") then
+      elseif (entry.kind == "hide_version") then
+         dbg.print{"mfile: ", entry.mfile,"\n"}
+         self.__hiddenT[entry.mfile] = true
+      elseif (entry.kind == "hide_modulefile") then
          dbg.print{"mfile: ", entry.mfile,"\n"}
          self.__hiddenT[entry.mfile] = true
       end
@@ -342,9 +338,10 @@ end
 -- modT is a table with: sn, fullName and fn
 function M.isVisible(self, modT)
    local name = modT.fullName
+   local fn   = modT.fn
    local isVisible = true
 
-   if (self:getHiddenT(name)) then
+   if (self:getHiddenT(name) or self:getHiddenT(fn)) then
       isVisible = false
    elseif (name:sub(1,1) == ".") then
       isVisible = false
@@ -365,5 +362,7 @@ function M.update(self, fnA)
    l_build(self,fnA)
    dbg.fini("MRC:update")
 end
+
+
 
 return M

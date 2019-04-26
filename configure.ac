@@ -383,6 +383,78 @@ AC_ARG_WITH(ModulePathInit,
     MODULEPATH_INIT="$withval"
     AC_DEFINE_UNQUOTED(MODULEPATH_INIT, "$withval"))dnl
 
+AC_SUBST(SITE_CONTROLLED_PREFIX)
+AC_ARG_WITH(siteControlPrefix,
+    AC_HELP_STRING([--with-siteControlPrefix=ans],[A user controlled prefix. [[no]]]),
+    SITE_CONTROLLED_PREFIX="$withval"
+    AC_MSG_RESULT([SITE_CONTROLLED_PREFIX=$with_siteControlPrefix])
+    AC_DEFINE_UNQUOTED(SITE_CONTROLLED_PREFIX, "$with_siteControlPrefix")dnl
+    ,
+    withval="no"
+    AC_MSG_RESULT([SITE_CONTROLLED_PREFIX=$withval])
+    SITE_CONTROLLED_PREFIX="$withval"
+    AC_DEFINE_UNQUOTED(SITE_CONTROLLED_PREFIX, "$withval"))dnl
+
+AC_SUBST(USE_BUILT_IN_PKGS)
+AC_ARG_WITH(useBuiltinPkgs,
+    AC_HELP_STRING([--with-useBuiltinPkgs=ans],[Use Built-in lua package instead of system ones. [[no]]]),
+    USE_BUILT_IN_PKGS="$withval"
+    AC_MSG_RESULT([USE_BUILT_IN_PKGS=$with_useBuiltinPkgs])
+    AC_DEFINE_UNQUOTED(USE_BUILT_IN_PKGS, "$with_useBuiltinPkgs")dnl
+    ,
+    withval="no"
+    AC_MSG_RESULT([USE_BUILT_IN_PKGS=$withval])
+    USE_BUILT_IN_PKGS="$withval"
+    AC_DEFINE_UNQUOTED(USE_BUILT_IN_PKGS, "$withval"))dnl
+
+AC_SUBST(SILENCE_SHELL_DEBUGGING)
+AC_ARG_WITH(silentShellDebugging,
+    AC_HELP_STRING([--with-silentShellDebugging=ans],[Use Built-in lua package instead of system ones. [[no]]]),
+    SILENCE_SHELL_DEBUGGING="$withval"
+    AC_MSG_RESULT([SILENCE_SHELL_DEBUGGING=$with_silentShellDebugging])
+    AC_DEFINE_UNQUOTED(SILENCE_SHELL_DEBUGGING, "$with_silentShellDebugging")dnl
+    ,
+    withval="no"
+    AC_MSG_RESULT([SILENCE_SHELL_DEBUGGING=$withval])
+    SILENCE_SHELL_DEBUGGING="$withval"
+    AC_DEFINE_UNQUOTED(SILENCE_SHELL_DEBUGGING, "$withval"))dnl
+
+AC_SUBST(FAST_TCL_INTERP)
+AC_ARG_WITH(fastTCLInterp,
+    AC_HELP_STRING([--with-fastTCLInterp=ans],[Use the fast TCL interpreter. [[yes]]]),
+    FAST_TCL_INTERP="$withval"
+    AC_MSG_RESULT([FAST_TCL_INTERP=$with_fastTCLInterp])
+    AC_DEFINE_UNQUOTED(FAST_TCL_INTERP, "$with_fastTCLInterp")dnl
+    ,
+    withval="yes"
+    AC_MSG_RESULT([FAST_TCL_INTERP=$withval])
+    FAST_TCL_INTERP="$withval"
+    AC_DEFINE_UNQUOTED(FAST_TCL_INTERP, "$withval"))dnl
+
+
+if test "$ALLOW_TCL_MFILES" = yes -a "$FAST_TCL_INTERP" = yes ; then
+   
+   OS=$(uname -s)
+   DIR=/usr/include/tcl
+   if test "$OS" = Darwin ; then
+     DIR=$(xcrun --show-sdk-path)
+     DIR=${DIR}/usr/include
+   fi
+
+
+   CPPFLAGS="-I $DIR"
+
+   AC_CHECK_HEADER(tcl.h,
+                   [AC_DEFINE([HAVE_TCL_H], 1, [Define to 1 if you have tcl.h])],[]) 
+   dnl AC_CHECK_HEADER(tcl/tcl.h,
+   dnl                [AC_DEFINE([HAVE_TCL_TCL_H], 1,[Define to 1 if you have tcl/tcl.h])],[]) 
+
+   if test "$ac_cv_header_tcl_h" != yes ; then
+      AC_MSG_ERROR([Unable to build Lmod without tcl.h.  Please install the tcl devel package or configure --with-fastTCLInterp=no to not require tcl.h])
+   fi
+   AC_SEARCH_LIBS(Tcl_CreateInterp,[tcl] [tcl8.8] [tcl8.7] [tcl8.6] [tcl8.5],[],
+                [AC_MSG_ERROR([Unable to build Lmod with -ltcl Please install the tcl devel package or configure --with-fastTCLInterp=no to not require the tcl library])])
+fi
 AC_SUBST(SYS_LD_LIB_PATH)
 SYS_LD_LIB_PATH=$LD_LIBRARY_PATH
 
@@ -392,6 +464,7 @@ SYS_LD_PRELOAD=$LD_PRELOAD
 AC_SUBST(BASENAME)
 AC_SUBST(EXPR)
 AC_SUBST(PS)
+AC_SUBST(PATH_TO_LS)
 AC_SUBST(PATH_TO_GIT)
 AC_SUBST(PATH_TO_HASHSUM)
 AC_SUBST(PATH_TO_LUA)
@@ -409,7 +482,7 @@ if test "$PS" = "UNKNOWN_PS" ; then
   exit
 fi
 
-AC_PATH_PROG(EXPR,expr, UNKNOWN_EXPR)
+AC_PATH_PROGS(EXPR,[gexpr] [expr], UNKNOWN_EXPR)
 if test "$EXPR" = "UNKNOWN_EXPR" ; then
   echo
   echo "You must have either ps in your path. Quitting!"
@@ -418,7 +491,7 @@ if test "$EXPR" = "UNKNOWN_EXPR" ; then
   exit
 fi
 
-AC_PATH_PROG(BASENAME, basename, UNKNOWN_BASENAME)
+AC_PATH_PROGS(BASENAME, [gbasename] [basename], UNKNOWN_BASENAME)
 if test "$BASENAME" = "UNKNOWN_BASENAME" ; then
   echo
   echo "You must have either basename in your path. Quitting!"
@@ -431,8 +504,9 @@ fi
 
 
 
+AC_PATH_PROGS(PATH_TO_LS, [gls] [ls], "")
 AC_PATH_PROG(PATH_TO_GIT, git, "")
-AC_PATH_PROG(PATH_TO_PAGER,[less] [more], [more])
+AC_PATH_PROGS(PATH_TO_PAGER,[less] [more], [more])
 
 AC_PATH_PROGS(PATH_TO_HASHSUM, [sha1sum] [gsha1sum] [shasum] [md5sum] [gmd5sum] [md5], UNKNOWN_HASHSUM)
 if test "`basename $PATH_TO_HASHSUM`" = "md5" ; then
@@ -453,7 +527,7 @@ if test "$PATH_TO_TCLSH" = "UNKNOWN_TCLSH" -a "$ALLOW_TCL_MFILES" = yes; then
   rm -f makefile
   exit
 fi
-AC_PATH_PROG(PATH_TO_TR, [tr],"")
+AC_PATH_PROGS(PATH_TO_TR, [gtr] [tr],"")
 
 AC_PATH_PROG(PATH_TO_LUAC, [luac])
 AC_PATH_PROG(luaprog, [lua], "")
@@ -506,7 +580,7 @@ else
   lmodV=$($luaprog -e "v=require('Version'); s=v.git():gsub(' .*','');print(s)")
 fi
 
-IntLuaV=$( $luaprog  -e "_,_,M,m=_VERSION:gsub('Lua%s+',''):find('(%d+)%.(%d)'); print(math.floor(M*1000+m))")
+IntLuaV=$( $luaprog  -e "_,_,M,m=_VERSION:gsub('Lua%s+',''):find('(%d+)%.(%d)'); print(math.floor(tonumber(M)*1000+tonumber(m)))")
 
 if test $IntLuaV -lt 5001 -o $IntLuaV -gt 5003; then
   echo "Error: Lmod requires versions 5.1 or 5.2 or 5.3, You have: $LuaV"
@@ -528,6 +602,15 @@ AC_SUBST(SYS_LUA_PATH)
 AC_SUBST(SYS_LUA_CPATH)
 SYS_LUA_PATH=$($luaprog -e "print(package.path)")
 SYS_LUA_CPATH=$($luaprog -e "print(package.cpath)")
+SYS_LUA_PATH=$(echo $SYS_LUA_PATH   | sed -e 's|^\./?.lua;||'       \
+                                          -e 's|;\./?.lua;|;|'      \
+                                          -e 's|;\./?.lua$||'       \
+                                          -e 's|;\./?/init.lua;|;|' \
+                                          -e 's|;\./?/init.lua$||'  )
+
+SYS_LUA_CPATH=$(echo $SYS_LUA_CPATH | sed -e 's|^\./?.so;||'   \
+                                          -e 's|;\./?.so;|;|'  \
+                                          -e 's|;\./?.so$|;|')
 
 WD=`pwd`
 
@@ -611,62 +694,51 @@ end
 main()
 EOF
 
-printf "checking for lua modules: lfs"
-
-missingModules=""
-for i in lfs; do
-  $luaprog luaModuleAvailable $i 2> /dev/null
-  if test "$?" != 0 ; then
-    missingModules="$i"
-  fi
-done
-
-if test -n "$missingModules" ; then
-  echo "... no"
+if test "$USE_BUILT_IN_PKGS" = yes ; then
+  AC_SUBST(HAVE_LUAFILESYSTEM,no)
+  AC_SUBST(HAVE_LUA_TERM,no)
 else
-  lfsV=`$luaprog getLFSVersion`
-  if test "$lfsV" -lt 1006002; then
-     echo "... Too old, using providing version"
+  printf "checking for lua modules: lfs"
+
+  missingModules=""
+  for i in lfs; do
+    $luaprog luaModuleAvailable $i 2> /dev/null
+    if test "$?" != 0 ; then
+      missingModules="$i"
+    fi
+  done
+
+  if test -n "$missingModules" ; then
+    echo "... no"
   else
-     echo "... yes"    
-     AC_SUBST(HAVE_LUAFILESYSTEM,yes)
+    lfsV=`$luaprog getLFSVersion`
+    if test "$lfsV" -lt 1006002; then
+       echo "... Too old, using providing version"
+    else
+       echo "... yes"    
+       AC_SUBST(HAVE_LUAFILESYSTEM,yes)
+    fi
+  fi
+
+
+  printf "checking for lua modules: term"
+
+  missingModules=""
+  for i in term; do
+    $luaprog luaModuleAvailable $i 2> /dev/null
+    if test "$?" != 0 ; then
+      missingModules="$missingModules $i"
+    fi
+  done
+
+  if test -n "$missingModules" ; then
+    echo "... no"
+  else
+    AC_SUBST(HAVE_LUA_TERM,yes)
+    echo "... yes"
   fi
 fi
 
-
-printf "checking for lua modules: term"
-
-missingModules=""
-for i in term; do
-  $luaprog luaModuleAvailable $i 2> /dev/null
-  if test "$?" != 0 ; then
-    missingModules="$missingModules $i"
-  fi
-done
-
-if test -n "$missingModules" ; then
-  echo "... no"
-else
-  AC_SUBST(HAVE_LUA_TERM,yes)
-  echo "... yes"
-fi
-
-printf "checking for lua modules: json"
-
-missingModules=""
-for i in json; do
-  $luaprog luaModuleAvailable $i 2> /dev/null
-  if test "$?" != 0 ; then
-    missingModules="$missingModules $i"
-  fi
-done
-
-if test -n "$missingModules" ; then
-  echo "... no"
-else
-  AC_SUBST(HAVE_LUA_JSON,yes)
-  echo "... yes"
-fi
 
 rm luaModuleAvailable getLFSVersion
 

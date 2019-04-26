@@ -57,9 +57,9 @@ One choice is to install the lua-X.Y.Z.tar.gz file.  This tar ball
 contains lua and the required libraries. This can be
 downloaded from https://sourceforge.net/projects/lmod/files/::
 
-    $ wget https://sourceforge.net/projects/lmod/files/lua-5.1.4.5.tar.gz
+    $ wget https://sourceforge.net/projects/lmod/files/lua-5.1.4.9.tar.gz
 
-The current version is 5.1.4.5 but it may change in the future. This
+The current version is 5.1.4.9 but it may change in the future. This
 can be installed using the following commands::
 
     $ tar xf lua-X.Y.Z.tar.gz
@@ -71,13 +71,17 @@ can be installed using the following commands::
 
 The last command is optional, but you will have to somehow put the
 ``lua`` command in your path.  Also obviously, please replace X.Y.Z
-with the actual version (say 5.1.4.5)
+with the actual version (say 5.1.4.9)
 
+If you use this option you do **not** need to use your package manager
+or install luarocks.  Instead please read the section on how to
+install Lmod.
 
 Using Your Package Manager
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can use your package manager for your OS to install Lua. You will
+If you didn't install the lua tar ball described above then  
+you can use your package manager for your OS to install Lua. You will
 also need the matching packages: lua Filesystem (lfs) and luaposix.
 On Ubuntu Linux, the following packages will work::
 
@@ -135,6 +139,23 @@ Please change LUAROCKS_PREFIX to match your site.  The exporting of
 LUA_PATH and LUA_CPATH must be done before any module commands. It is
 very important that the trailing semicolon are there.  They are
 replaced by the built-in system path.
+
+
+Using Ansible
+~~~~~~~~~~~~~
+
+There is a `ready-to-use Ansible role
+<https://galaxy.ansible.com/idiv-biodiversity/lmod/>` that allows you to
+install Lmod conveniently from Ansible. The role was written with installation
+on HPC clusters in mind, i.e. it is possible to install Lmod into a global,
+networked file system share on only a single host, while all other hosts
+install just the Lmod dependencies and the shell configuration files.
+Nevertheless, it is of course possible to install Lmod with this role on a
+single server. Also, the role supports the transition to Lmod as described in
+:ref:`transition-to-lmod`.
+
+You can find the complete role documentation `here
+<https://github.com/idiv-biodiversity/ansible-role-lmod#ansible-role-lmod>`.
 
 
 Why does Lmod install differently?
@@ -216,11 +237,13 @@ If this file exists then MODULEPATH_ROOT method is not used.
 
 
 The ``profile`` file is the Lmod initialization script for the bash and zsh
-shells, and the ``cshrc`` file is for tcsh and csh shells. Please copy or link
-the ``profile`` and ``cshrc`` files to ``/etc/profile.d`` ::
+shells, the ``cshrc`` file is for tcsh and csh shells, and the ``profile.fish``
+file is for the fish shell. Please copy or link the ``profile`` and ``cshrc``
+files to ``/etc/profile.d``, and optionally the fish file to ``/etc/fish/conf.d``::
 
-    $ ln -s /opt/apps/lmod/lmod/init/profile /etc/profile.d/z00_lmod.sh
-    $ ln -s /opt/apps/lmod/lmod/init/cshrc   /etc/profile.d/z00_lmod.csh
+    $ ln -s /opt/apps/lmod/lmod/init/profile        /etc/profile.d/z00_lmod.sh
+    $ ln -s /opt/apps/lmod/lmod/init/cshrc          /etc/profile.d/z00_lmod.csh
+    $ ln -s /opt/apps/lmod/lmod/init/profile.fish   /etc/fish/conf.d/z00_lmod.fish
 
 To test the setup, you just need to login as a user. The module
 command should be set and ``MODULEPATH`` should be defined. Bash or Zsh
@@ -328,6 +351,14 @@ file can be in a number of places but is typically in ``/etc/zshenv`` or
       setopt nomatch
       done
     fi
+    
+    
+Fish:
+~~~~~
+
+Fish users have `several standard places <https://fishshell.com/docs/current/index.html#initialization>`_ searched for scripts. The system location is usually ``/etc/fish/conf.d`` and the user location is usually `` ~/.config/fish/conf.d/``. Fish users are provided a special profile file, ``init/profile.fish``, that should be linked into one of these places with a suitable name. For example, a local user for fish might want::
+
+    $ ln -s /opt/apps/lmod/lmod/init/profile.fish ~/.config/fish/conf.d/z00_lmod.fish
 
 .. _issues-with-bash:
 
