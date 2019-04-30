@@ -556,6 +556,49 @@ function Reset(msg)
    dbg.fini("Reset")
 end
 
+local function migrate_collection(path)
+  -- Check if the file exists
+  if (isFile(path)) then
+     -- Open and read the content of the file
+     local f = assert(io.open(path, 'r'))
+     local data = f:read("*all")
+     -- Check if this is a skylake collection
+     if string.match(data, "skylake") then
+        io.stderr:write("\nMigrated existing collection from " .. path .. " to " .. path .. ".skylake\n\n")
+        os.rename(path, path .. ".skylake")
+     end
+     -- Check if this is a sandybridge collection
+     if string.match(data, "sandybridge") then
+        io.stderr:write("\nMigrated existing collection from " .. path .. " to " .. path .. ".sandybridge\n\n")
+        os.rename(path, path .. ".sandybridge")
+     end
+     -- Check if this is a westmere collection
+     if string.match(data, "westmere") then
+        io.stderr:write("\nMigrated existing collection from " .. path .. " to " .. path .. ".westmere\n\n")
+        os.rename(path, path .. ".westmere")
+     end
+     -- Check if this is a knl collection
+     if string.match(data, "knl") then
+        io.stderr:write("\nMigrated existing collection from " .. path .. " to " .. path .. ".knl\n\n")
+        os.rename(path, path .. ".knl")
+     end
+  end
+end
+
+-- Checks if the supplied collection exists in an unmigrated state
+-- and subsequently determines the architecture and migrates the 
+-- collection
+local function check_collection_migration(collection)
+  -- Check for migration of existing collections if they are from the older versions of lmod
+   if (collection ~= nil) then
+      -- Build the path to the named collection and attempt to migrate
+      migrate_collection(pathJoin(os.getenv("HOME"), ".lmod.d", collection))
+   else
+     -- Build the path to the default collection and attempt to migrate
+     migrate_collection(pathJoin(os.getenv("HOME"), ".lmod.d", "default"))
+   end
+end
+
 --------------------------------------------------------------------------
 -- Restore the state of the user's loaded modules original
 -- state. If a user has a "default" then use that collection.
@@ -570,20 +613,8 @@ function Restore(collection)
    local arch   = os.getenv("SYS_ARCH")
    local msgTail = ""
    
-   -- Check for migration of existing collections if they are from the older versions of lmod
-   if (collection ~= nil) then
-      local default_path = pathJoin(os.getenv("HOME"), ".lmod.d", collection)
-      if (isFile(default_path)) then
-         io.stderr:write("\nMigrated existing collection from " .. default_path .. " to " .. default_path .. ".skylake\n\n")
-         os.rename(default_path, default_path .. ".skylake")
-      end
-   else
-     local default_path = pathJoin(os.getenv("HOME"), ".lmod.d", "default")
-     if (isFile(default_path)) then
-        io.stderr:write("\nMigrated existing default collection from " .. default_path .. " to " .. default_path .. ".skylake\n\n")
-        os.rename(default_path, default_path .. ".skylake")
-     end
-   end
+   -- Check if this collection needs to be migrated
+   check_collection_migration(collection)
 
    if (collection == nil) then
       path = pathJoin(os.getenv("HOME"), ".lmod.d", "default" .. "." .. arch)

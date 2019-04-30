@@ -156,4 +156,11 @@ test_save_restore() {
     if [[ ! -f "/root/.lmod.d/default.skylake" ]]; then
         fail "Expected save file was not created"
     fi
+
+    reset_lmod "skylake"
+    mv /root/.lmod.d/mysave.sandybridge /root/.lmod.d/mysave
+    module restore mysave
+    if [[ ! -f "/root/.lmod.d/mysave.sandybridge" ]]; then
+        fail "Expected save file was not created"
+    fi
 }
