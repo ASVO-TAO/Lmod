@@ -17,9 +17,9 @@ local root = "/apps/skylake/software/compiler/gcc/6.4.0/openmpi/3.0.0"
 
 conflict("openmpi")
 
-if not isloaded("slurm/.latest") then
-    load("slurm/.latest")
-end
+-- if not isloaded("slurm/.latest") then
+--     load("slurm/.latest")
+-- end
 prepend_path("MODULEPATH", "/apps/skylake/modulefiles/all/mpi/gcc/6.4.0/openmpi/3.0.0")
 
 prepend_path("CPATH", pathJoin(root, "include"))

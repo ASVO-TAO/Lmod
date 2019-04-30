@@ -65,8 +65,6 @@ local lfs          = require("lfs")
 local pack         = (_VERSION == "Lua 5.1") and argsPack or table.pack  -- luacheck: compat
 local unpack       = (_VERSION == "Lua 5.1") and unpack or table.unpack  -- luacheck: compat
 
-local system_name  = cosmic:value("LMOD_SYSTEM_NAME")
-
 --------------------------------------------------------------------------
 -- Both Help and Whatis functions funnel their actions through
 -- the Access function. MC_Access defines real functions for both M.help
@@ -110,9 +108,9 @@ local function findNamedCollections(a,path)
             findNamedCollections(a,f)
          else
             local idx    = file:find("%.")
-            local accept = (not idx) and (not system_name)
-            if (idx and system_name) then
-               accept    = file:sub(idx+1,-1) == system_name
+            local accept = (not idx)
+            if (idx) then
+               accept    = file:sub(idx+1,-1) == os.getenv("SYS_ARCH")
                f         = pathJoin(path, file:sub(1,idx-1))
             end
             if (accept) then
@@ -141,8 +139,8 @@ function CollectionLst(collection)
    collection  = collection or "default"
    dbg.start{"CollectionLst(",collection,")"}
    local masterTbl = masterTbl()
-   local sname     = (not system_name) and "" or "." .. system_name
-   local path      = pathJoin(os.getenv("HOME"), ".lmod.d", collection .. sname)
+   local arch      = os.getenv("SYS_ARCH")
+   local path      = pathJoin(os.getenv("HOME"), ".lmod.d", collection .. "." .. arch)
    local mt        = FrameStk:singleton():mt()
    local a         = mt:reportContents{fn=path, name=collection}
    local shell     = _G.Shell
@@ -179,8 +177,8 @@ function GetDefault(collection)
    collection  = collection or "default"
    dbg.start{"GetDefault(",collection,")"}
 
-   local sname = (not system_name) and "" or "." .. system_name
-   local path  = pathJoin(os.getenv("HOME"), ".lmod.d", collection .. sname)
+   local arch = os.getenv("SYS_ARCH")
+   local path  = pathJoin(os.getenv("HOME"), ".lmod.d", collection .. "." .. arch)
    local mt    = FrameStk:singleton():mt()
    mt:getMTfromFile{fn=path, name=collection, }
    dbg.fini("GetDefault")
@@ -569,18 +567,26 @@ function Restore(collection)
    local msg
    local path
    local myName  = "default"
-   local sname   = system_name
+   local arch   = os.getenv("SYS_ARCH")
    local msgTail = ""
-   if (not sname) then
-      sname   = ""
-      myName  = "(empty)"
+   
+   -- Check for migration of existing collections if they are from the older versions of lmod
+   if (collection ~= nil) then
+      local default_path = pathJoin(os.getenv("HOME"), ".lmod.d", collection)
+      if (isFile(default_path)) then
+         io.stderr:write("\nMigrated existing collection from " .. default_path .. " to " .. default_path .. ".skylake\n\n")
+         os.rename(default_path, default_path .. ".skylake")
+      end
    else
-      msgTail = ", for system: \"".. sname .. "\""
-      sname   = "." .. sname
+     local default_path = pathJoin(os.getenv("HOME"), ".lmod.d", "default")
+     if (isFile(default_path)) then
+        io.stderr:write("\nMigrated existing default collection from " .. default_path .. " to " .. default_path .. ".skylake\n\n")
+        os.rename(default_path, default_path .. ".skylake")
+     end
    end
 
    if (collection == nil) then
-      path = pathJoin(os.getenv("HOME"), ".lmod.d", "default" .. sname)
+      path = pathJoin(os.getenv("HOME"), ".lmod.d", "default" .. "." .. arch)
       if (not isFile(path)) then
          collection = "system"
          myName = collection
@@ -589,7 +595,7 @@ function Restore(collection)
       end
    elseif (collection ~= "system") then
       myName = collection
-      path   = pathJoin(os.getenv("HOME"), ".lmod.d", collection .. sname)
+      path   = pathJoin(os.getenv("HOME"), ".lmod.d", collection .. "." .. arch)
       if (not isFile(path)) then
          LmodError{msg="e_Unknown_Coll", collection = collection}
       end
@@ -650,13 +656,7 @@ function Save(...)
    dbg.start{"Save(",concatTbl({...},", "),")"}
 
    local msgTail = ""
-   local sname   = system_name
-   if (not sname) then
-      sname   = ""
-   else
-      msgTail = i18n("m_For_System",{sname = sname})
-      sname   = "." .. sname
-   end
+   local arch   = os.getenv("SYS_ARCH")
 
    if (barefilename(a):find("%.")) then
       LmodWarning{msg="w_No_dot_Coll",name=a}
@@ -682,14 +682,14 @@ function Save(...)
    if (not attr) then
       mkdir_recursive(path)
    end
-   path = pathJoin(path, a .. sname)
+   path = pathJoin(path, a .. "." .. arch)
    if (isFile(path)) then
       os.rename(path, path .. "~")
    end
    mt:setHashSum()
    local varT = frameStk:varT()
    mt:setMpathRefCountT(varT[ModulePath]:refCountT())
-
+   
    local f  = io.open(path,"w")
    if (f) then
       f:write("-- -*- lua -*-\n")
@@ -745,10 +745,6 @@ function SaveList(...)
 
    b            = {}
    local msgHdr = ""
-   if (system_name) then
-      msgHdr = i18n("lmodSystemName",{name = system_name})
-   end
-
    if (#a > 0) then
       b[#b+1]  = i18n("namedCollList",{msgHdr = msgHdr})
       local ct = ColumnTable:new{tbl=a,gap=0,width=cwidth}
@@ -904,7 +900,7 @@ function Disable(...)
    local shell = _G.Shell
    local path  = pathJoin(os.getenv("HOME"), LMODdir)
    local argA  = pack(...)
-   local sname = (not system_name) and "" or "." .. system_name
+   local arch = os.getenv("SYS_ARCH")
 
    if (argA.n == 0) then
       argA[1] = "default"
@@ -913,7 +909,7 @@ function Disable(...)
 
    for i = 1,argA.n do
       local name  = argA[i]
-      local fn    = pathJoin(path,name .. sname)
+      local fn    = pathJoin(path,name .. "." .. arch)
       local fnNew = fn .. "~"
       os.rename(fn, fnNew)
       shell:echo(i18n("m_Collection_disable",{name=name}))
